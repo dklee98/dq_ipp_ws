@@ -1,0 +1,32 @@
+<?xml version="1.0" ?>
+<sdf version='1.5'>
+  <model name='parasol'>
+    <static>true</static>
+      <link name='parasol'>
+        <pose frame=''>0 0 0 0 0 0</pose>
+<!--         <collision name='parasol'>-->
+<!--          <geometry>-->
+<!--            <mesh>-->
+<!--              <scale>1 1 1</scale>-->
+<!--              <uri>model://parasol/model.dae</uri>-->
+<!--            </mesh>-->
+<!--          </geometry>-->
+<!--        </collision>-->
+        <visual name='parasol'>
+<!--        <cast_shadows>false</cast_shadows>-->
+          <geometry>
+            <mesh>
+              <scale>1 1 1</scale>
+              <uri>model://parasol/model.dae</uri>
+            </mesh>
+          </geometry>
+          <material>
+            <script>
+              <name>parasol</name>
+              <uri>model://parasol/model.dae</uri>
+            </script>
+          </material>
+        </visual>
+      </link>
+  </model>
+</sdf>
