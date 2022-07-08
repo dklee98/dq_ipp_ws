@@ -142,10 +142,10 @@ def input(rbt):
                 pose_input.pose.orientation.z = qq[2]
                 pose_input.pose.orientation.w = qq[3]
 
-            print("Mode < %d > now, press L1 or R1 to change, Press Button[2],[3] to arm/disarm"%rbt.mode)
-            print("Mission:< %d >, Input : X: %.2f  Y: %.2f  Z: %.2f  Yaw: %.2f "%(rbt.mission%2, pose_input.pose.position.x, pose_input.pose.position.y, pose_input.pose.position.z, yaw_input))
-            print("Position(Meter): X: %.2f Y: %.2f Z: %.2f "%(rbt.truth.x, rbt.truth.y, rbt.truth.z))
-            print("Angle(Degree): roll: %.2f pitch: %.2f yaw: %.2f \n"%(rbt.roll/np.pi*180, rbt.pitch/np.pi*180, rbt.yaw/np.pi*180)) #radian : +-pi
+            # print("Mode < %d > now, press L1 or R1 to change, Press Button[2],[3] to arm/disarm"%rbt.mode)
+            # print("Mission:< %d >, Input : X: %.2f  Y: %.2f  Z: %.2f  Yaw: %.2f "%(rbt.mission%2, pose_input.pose.position.x, pose_input.pose.position.y, pose_input.pose.position.z, yaw_input))
+            # print("Position(Meter): X: %.2f Y: %.2f Z: %.2f "%(rbt.truth.x, rbt.truth.y, rbt.truth.z))
+            # print("Angle(Degree): roll: %.2f pitch: %.2f yaw: %.2f \n"%(rbt.roll/np.pi*180, rbt.pitch/np.pi*180, rbt.yaw/np.pi*180)) #radian : +-pi
 
             pose_input.header.stamp = rospy.Time.now()
             rbt.position_pub.publish(pose_input)
@@ -170,18 +170,18 @@ def input(rbt):
                 rate_input.twist.angular.z = yaw_rate*(rbt.joy.axes[0])
                 thrust_input.thrust = 0.57 + (rbt.joy.axes[4])*0.4
 
-            print("Mode < %d > now, press L1 or R1 to change, Press Button[2],[3] to arm/disarm"%rbt.mode)
-            print("Mission:< %d >, Input : R: %.2f  P: %.2f  Y: %.2f  thrust: %.2f "%(rbt.mission%2, rate_input.twist.angular.x*r2d, rate_input.twist.angular.y*r2d, rate_input.twist.angular.z*r2d, thrust_input.thrust))
-            print("Position(Meter): X: %.2f Y: %.2f Z: %.2f "%(rbt.truth.x, rbt.truth.y, rbt.truth.z))
-            print("Angle(Degree): roll: %.2f pitch: %.2f yaw: %.2f \n"%(rbt.roll/np.pi*180, rbt.pitch/np.pi*180, rbt.yaw/np.pi*180)) #radian : +-pi
+            # print("Mode < %d > now, press L1 or R1 to change, Press Button[2],[3] to arm/disarm"%rbt.mode)
+            # print("Mission:< %d >, Input : R: %.2f  P: %.2f  Y: %.2f  thrust: %.2f "%(rbt.mission%2, rate_input.twist.angular.x*r2d, rate_input.twist.angular.y*r2d, rate_input.twist.angular.z*r2d, thrust_input.thrust))
+            # print("Position(Meter): X: %.2f Y: %.2f Z: %.2f "%(rbt.truth.x, rbt.truth.y, rbt.truth.z))
+            # print("Angle(Degree): roll: %.2f pitch: %.2f yaw: %.2f \n"%(rbt.roll/np.pi*180, rbt.pitch/np.pi*180, rbt.yaw/np.pi*180)) #radian : +-pi
 
             thrust_input.header.stamp = rate_input.header.stamp = rospy.Time.now()
             rbt.rate_pub.publish(rate_input)
             rbt.thrust_pub.publish(thrust_input)
-    else:
-        print("Hold now, press Button[0] to control again")
-        print("Position(Meter): X: %.2f Y: %.2f Z: %.2f "%(rbt.truth.x, rbt.truth.y, rbt.truth.z))
-        print("Angle(Degree): roll: %.2f pitch: %.2f yaw: %.2f \n"%(rbt.roll/np.pi*180, rbt.pitch/np.pi*180, rbt.yaw/np.pi*180)) #radian : +-pi
+    # else:
+        # print("Hold now, press Button[0] to control again")
+        # print("Position(Meter): X: %.2f Y: %.2f Z: %.2f "%(rbt.truth.x, rbt.truth.y, rbt.truth.z))
+        # print("Angle(Degree): roll: %.2f pitch: %.2f yaw: %.2f \n"%(rbt.roll/np.pi*180, rbt.pitch/np.pi*180, rbt.yaw/np.pi*180)) #radian : +-pi
 
 ##############################################################################################
 

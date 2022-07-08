@@ -8,13 +8,13 @@
 
 
     <include>
-      <uri>model://toshiba_4k_cam</uri>
-      <pose>0.1 0.0 0.05 0 1.0472 0</pose>
+      <uri>model://custom_rgbd_cam</uri>
+      <pose>0.1 0.0 0.05 0 0 0</pose>
       <!-- 0.7854 : 45 deg -->
       <!-- 1.0472 : 60 deg -->
     </include>
     <joint name="d455_cam_joint" type="fixed">
-      <child>toshiba_4k_cam::camera_link</child>
+      <child>custom_rgbd_cam::camera_link</child>
       <parent>m100::fuselage</parent>
       <axis>
         <xyz>0 0 1</xyz>
