@@ -50,11 +50,11 @@ yaw_rate = 2
 
 r2d = 180/np.pi
 d2r = np.pi/180
-max_rate_x = 360 * d2r
-max_rate_y = 360 * d2r
-max_vel_x = 10
-max_vel_y = 10
-max_vel_z = 4
+max_rate_x = 90 * d2r   # 360
+max_rate_y = 90 * d2r
+max_vel_x = 5   # 10
+max_vel_y = 5
+max_vel_z = 3   # 4
 
 ''' class '''
 class robot():
