@@ -47,6 +47,12 @@
     <node name="tf_broader" pkg="dq_ipp" type="tf_broadcaster.py" output="screen"/>
     <!-- <node name="tf_converter" pkg="dq_ipp" type="tf_converter.py" output="screen"/> -->
 
+    <node name="mapping_node" pkg="dq_ipp" type="mapping_node" output="screen">
+        <rosparam param="/cam_intrinsic">[640, 480, 319.998, 319.998, 320.5, 240.5]</rosparam> <!-- width, height, f_x, f_y, c_x, c_y -->
+        <rosparam param="/cam_extrinsic">[0.1, 0.0, 0.05]</rosparam> <!-- body to cam: translation x, y, z, downward pitch angle (rad) -->
+    </node>
+
+
     <!-- PX4 SITL and Gazebo -->
     <include file="$(find px4)/launch/posix_sitl.launch">
         <arg name="x" value="$(arg x)"/>
@@ -77,6 +83,7 @@
     <node name="voxblox_node" pkg="voxblox_ros" type="esdf_server" output="screen" args="-alsologtostderr">
       <!-- <remap from="pointcloud" to="/dji_matrice_100/world_points"/> -->
       <remap from="pointcloud" to="/dji_matrice_100/camera/depth/points"/>
+      <!-- <remap from="pointcloud" to="/points"/> -->
       <param name="use_tf_transforms" value="true"/>
       <param name="publish_tsdf_map" value="true" />
       <param name="publish_esdf_map" value="true" />

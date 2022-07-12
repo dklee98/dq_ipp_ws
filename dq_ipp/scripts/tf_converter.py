@@ -35,9 +35,9 @@ class converter():
         trans3 = self.tf_buffer.lookup_transform("world", "map", rospy.Time(0), rospy.Duration(10))
         
         self.world_points = msg
-        # self.world_points = do_transform_cloud(msg, trans1)
-        # self.world_points = do_transform_cloud(self.world_points, trans2)
-        # self.world_points = do_transform_cloud(self.world_points, trans3)
+        self.world_points = do_transform_cloud(msg, trans1)
+        self.world_points = do_transform_cloud(self.world_points, trans2)
+        self.world_points = do_transform_cloud(self.world_points, trans3)
         self.world_points.header.frame_id = "world"
 
         self.pub_points.publish(self.world_points)

@@ -24,7 +24,11 @@ include_directories(
   ${OCTOMAP_INCLUDE_DIRS}
 )
 
+add_library(${PROJECT_NAME}
+            src/mapping.cpp
+)
+
 catkin_package()
 
-#add_executable(anbo_node src/main.cpp)
-#target_link_libraries(anbo_node ${catkin_LIBRARIES} ${EIGEN3_LIBS} ${OpenCV_LIBS} ${OCTOMAP_LIBRARIES})
+add_executable(mapping_node src/mapping_node.cpp)
+target_link_libraries(mapping_node ${PROJECT_NAME} ${catkin_LIBRARIES} ${EIGEN3_LIBS} ${OpenCV_LIBS} ${OCTOMAP_LIBRARIES} )
