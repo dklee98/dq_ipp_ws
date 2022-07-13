@@ -17,7 +17,7 @@ mapping_class::mapping_class(const ros::NodeHandle& n) : nh(n)
     sub_pose = nh.subscribe<geometry_msgs::PoseStamped>("/mavros/local_position/pose", 3, &mapping_class::cb_pose, this);
 
     // Publisher
-    pub_pointcloud = nh.advertise<sensor_msgs::PointCloud2>("/points", 10);
+    pub_pointcloud = nh.advertise<sensor_msgs::PointCloud2>("/aligned_points", 10);
     
     // sync subscriber
     static message_filters::Subscriber<sensor_msgs::Image> sub_depth;
@@ -95,7 +95,7 @@ void mapping_class::cb_rgbd(const sensor_msgs::Image::ConstPtr& depth_msg, const
             pcl::PointCloud<pcl::PointXYZRGB> cam_cvt_pcl;
             depth_img_to_pcl(depth_img, rgb_img, m_scale_factor, m_cam_intrinsic, cam_cvt_pcl);
         
-        // for visualization
+        // publish aligned pointcloud (voxblox input & visualization)
         sensor_msgs::PointCloud2 cloud_ros;
         pcl::toROSMsg(cam_cvt_pcl, cloud_ros);
         cloud_ros.header.stamp = depth_msg->header.stamp;
