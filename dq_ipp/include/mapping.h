@@ -47,9 +47,8 @@ private:
 
     // rgbd callback
     double m_scale_factor = 1.0;
-    int m_downsampling_counter = 0;
-    int m_downsampling_devider = 5;
-    cv::Mat m_current_rgb_image;
+    int m_downsampling_counter = 0; // downsampling counter
+    int m_downsampling_devider = 1; // downsampling scale
 
     void get_param();
     void cb_rgbd(const sensor_msgs::Image::ConstPtr& depth_msg, const sensor_msgs::Image::ConstPtr& rgb_msg);

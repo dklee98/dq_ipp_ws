@@ -37,11 +37,11 @@
           <image>
             <width>640</width>
             <height>480</height>
-            <format>R8G8B8</format>
+            <format>B8G8R8</format>
           </image>
           <clip>
             <near>0.1</near>
-            <far>2500</far>
+            <far>1000</far>
           </clip>
           <noise>
             <type>gaussian</type>
@@ -51,12 +51,12 @@
         </camera>
         <always_on>1</always_on>
         <visualize>1</visualize>
-        <update_rate>3.0</update_rate>
+        <update_rate>15.0</update_rate>
         <plugin name="camera_controller" filename="libgazebo_ros_openni_kinect.so">
           <robotNamespace>/dji_matrice_100</robotNamespace>
           <cameraName>camera</cameraName>
           <alwaysOn>true</alwaysOn>
-          <updateRate>3.0</updateRate>
+          <updateRate>0.0</updateRate>
           <pointCloudCutoff>0.2</pointCloudCutoff>
           <pointCloudCutoffMax>20</pointCloudCutoffMax>
           <imageTopicName>rgb/image_raw</imageTopicName>

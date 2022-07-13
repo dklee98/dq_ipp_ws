@@ -17,7 +17,7 @@ mapping_class::mapping_class(const ros::NodeHandle& n) : nh(n)
     sub_pose = nh.subscribe<geometry_msgs::PoseStamped>("/mavros/local_position/pose", 3, &mapping_class::cb_pose, this);
 
     // Publisher
-    pub_pointcloud = nh.advertise<sensor_msgs::PointCloud2>("/points", 3);
+    pub_pointcloud = nh.advertise<sensor_msgs::PointCloud2>("/points", 10);
     
     // sync subscriber
     static message_filters::Subscriber<sensor_msgs::Image> sub_depth;
@@ -89,10 +89,8 @@ void mapping_class::cb_rgbd(const sensor_msgs::Image::ConstPtr& depth_msg, const
             return;
         }
 
-        if (!rgb_img.empty())
-            m_current_rgb_image = rgb_img;
 
-        ////// doin somethin
+        //// down sampling
         if (m_downsampling_counter % m_downsampling_devider == 0 && is_time_sync){
             pcl::PointCloud<pcl::PointXYZRGB> cam_cvt_pcl;
             depth_img_to_pcl(depth_img, rgb_img, m_scale_factor, m_cam_intrinsic, cam_cvt_pcl);
@@ -100,6 +98,7 @@ void mapping_class::cb_rgbd(const sensor_msgs::Image::ConstPtr& depth_msg, const
         // for visualization
         sensor_msgs::PointCloud2 cloud_ros;
         pcl::toROSMsg(cam_cvt_pcl, cloud_ros);
+        cloud_ros.header.stamp = depth_msg->header.stamp;
         cloud_ros.header.frame_id = "camera_link";
         pub_pointcloud.publish(cloud_ros);
 

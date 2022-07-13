@@ -40,7 +40,7 @@
     <arg name="voxels_per_side" default="16"/>
     <arg name="ray_length" default="10.0"/>
     <arg name="method" default="fast"/>
-    <arg name="verbose_voxblox" default="true"/>
+    <arg name="verbose_voxblox" default="false"/>
 
 
     <!-- tf broadcaster is needed -->
@@ -49,7 +49,7 @@
 
     <node name="mapping_node" pkg="dq_ipp" type="mapping_node" output="screen">
         <rosparam param="/cam_intrinsic">[640, 480, 319.998, 319.998, 320.5, 240.5]</rosparam> <!-- width, height, f_x, f_y, c_x, c_y -->
-        <rosparam param="/cam_extrinsic">[0.1, 0.0, 0.05]</rosparam> <!-- body to cam: translation x, y, z, downward pitch angle (rad) -->
+        <rosparam param="/cam_extrinsic">[0.1, 0.0, 0.02]</rosparam> <!-- body to cam: translation x, y, z, downward pitch angle (rad) -->
     </node>
 
 
@@ -82,8 +82,8 @@
     <!-- Voxblox -->
     <node name="voxblox_node" pkg="voxblox_ros" type="esdf_server" output="screen" args="-alsologtostderr">
       <!-- <remap from="pointcloud" to="/dji_matrice_100/world_points"/> -->
-      <remap from="pointcloud" to="/dji_matrice_100/camera/depth/points"/>
-      <!-- <remap from="pointcloud" to="/points"/> -->
+      <!-- <remap from="pointcloud" to="/dji_matrice_100/camera/depth/points"/> -->
+      <remap from="pointcloud" to="/points"/>
       <param name="use_tf_transforms" value="true"/>
       <param name="publish_tsdf_map" value="true" />
       <param name="publish_esdf_map" value="true" />
