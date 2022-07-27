@@ -1,12 +1,13 @@
-#include "mapping.h"
+#include "planner_ros.h"
 
 int main(int argc, char **argv){
 
     signal(SIGINT, signal_handler); // to exit program when ctrl+c
 
-    ros::init(argc, argv, "mapping_node");
-    ros::NodeHandle n("~");
-    mapping_class mapping_(n);
+    ros::init(argc, argv, "planner_node");
+    ros::NodeHandle nh("");
+    ros::NodeHandle nh_private("~");
+    planner_ros_class planner_node_(nh, nh_private);
 
     ros::AsyncSpinner spinner(4);
     spinner.start();

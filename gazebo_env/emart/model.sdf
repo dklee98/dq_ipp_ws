@@ -11,7 +11,8 @@
         <pose frame=''>0 0 0 0 -0 0</pose>
         <geometry>
           <mesh>
-            <scale>0.35 0.35 0.35</scale>
+            <scale>0.2 0.2 0.2</scale>
+            <!-- real size : 120 * 68 * 60 -->
             <uri>model://emart/untitled.stl</uri>
           </mesh>
         </geometry>
@@ -20,7 +21,7 @@
         <pose frame=''>0 0 0 0 -0 0</pose>
         <geometry>
           <mesh>
-            <scale>0.35 0.35 0.35</scale>
+            <scale>0.2 0.2 0.2</scale>
             <uri>model://emart/final.dae</uri>
           </mesh>
         </geometry>

@@ -10,6 +10,8 @@ find_package(catkin REQUIRED COMPONENTS
   cv_bridge
   pcl_conversions
   pcl_ros
+  voxblox_ros
+  voxblox
 )
 
 find_package(Eigen3 REQUIRED)
@@ -24,11 +26,28 @@ include_directories(
   ${OCTOMAP_INCLUDE_DIRS}
 )
 
-add_library(${PROJECT_NAME}
+add_library(${PROJECT_NAME}_mapping
             src/mapping.cpp
 )
+
+add_library(pn_ros
+            src/planner_ros.cpp
+)
+add_library(pn
+            src/planner.cpp
+)
+add_library(vb
+            src/voxblox.cpp
+)
+add_library(rc
+            src/ray_caster.cpp
+)
+
 
 catkin_package()
 
 add_executable(mapping_node src/mapping_node.cpp)
-target_link_libraries(mapping_node ${PROJECT_NAME} ${catkin_LIBRARIES} ${EIGEN3_LIBS} ${OpenCV_LIBS} ${OCTOMAP_LIBRARIES} )
+target_link_libraries(mapping_node ${PROJECT_NAME}_mapping ${catkin_LIBRARIES} ${EIGEN3_LIBS} ${OpenCV_LIBS} ${OCTOMAP_LIBRARIES} )
+
+add_executable(planner_node src/planner_node.cpp)
+target_link_libraries(planner_node pn_ros pn vb rc ${catkin_LIBRARIES} ${EIGEN3_LIBS} ${OpenCV_LIBS} ${OCTOMAP_LIBRARIES} )
