@@ -23,29 +23,34 @@ public:
     
     const static unsigned char SURFACE_F = 0;
     const static unsigned char GENERAL_F = 1;
-
     
     void get_param();
 
+    void test();
 
 protected:
     voxblox_class *map_ = new voxblox_class();
     ray_caster_class *ray_ = new ray_caster_class(*map_);
 
     // variables
-    Eigen::Vector3d current_position;
-    Eigen::Quaterniond current_orientation;
+    bool f_planning;    // flag
+    Eigen::Vector3d g_current_position; // global
+    Eigen::Quaterniond g_current_orientation;
     Eigen::Vector3d target_position;
     double target_yaw;
 
     // params
     double p_checking_distance; // distance in voxelsizes where we check for known voxels
+    bool p_verbose;
     
     // constants
     double c_voxel_size;
     Eigen::Vector3d c_neighbor_voxels[26];
 
     bool isFrontierVoxel(const Eigen::Vector3d& voxel);
+
+    // Visualization
+    virtual void v_visible_voxels(std::vector<Eigen::Vector3d> voxels, double voxel_size) = 0;
 };
 
 

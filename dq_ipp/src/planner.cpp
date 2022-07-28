@@ -4,11 +4,13 @@ using namespace std;
 using namespace std::chrono;
 using namespace Eigen;
 
-planner_class::planner_class()   {
+planner_class::planner_class() : f_planning(false)  {
     get_param();
+
 }
 
 void planner_class::get_param()    {
+    p_verbose = true;
     p_checking_distance = 1.0;
     c_voxel_size = map_->getVoxelSize();
     auto vs = c_voxel_size * p_checking_distance;
@@ -59,3 +61,12 @@ bool planner_class::isFrontierVoxel(const Eigen::Vector3d& voxel) {
     return false;
 }
 
+void planner_class::test()  {
+    // test getVisibleVoxels
+    std::vector<Eigen::Vector3d> new_voxels;
+    ray_->getVisibleVoxels(&new_voxels, g_current_position, g_current_orientation);  // free space : 920 voxels
+    if (p_verbose)  {
+        v_visible_voxels(new_voxels, c_voxel_size);
+    }
+    
+}

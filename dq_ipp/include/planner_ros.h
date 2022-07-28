@@ -9,6 +9,9 @@
 
 #include <geometry_msgs/PoseStamped.h>
 #include <trajectory_msgs/MultiDOFJointTrajectory.h>
+#include <std_srvs/SetBool.h>
+#include <visualization_msgs/Marker.h>
+#include <visualization_msgs/MarkerArray.h>
 
 #include "planner.h"
 
@@ -26,6 +29,13 @@ public:
 
     // ros callbacks
     void cb_pose(const geometry_msgs::PoseStamped& msg);
+    bool cb_srv_run_planner(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res);
+
+    // Visualization
+    void v_visible_voxels(std::vector<Eigen::Vector3d> voxels, double voxel_size) override;
+
+    // planning loop
+    void planning_loop();
 
 protected:
     // ros
@@ -34,9 +44,14 @@ protected:
     // Subscriber, Publisher
     ros::Subscriber sub_pose;
     ros::Publisher pub_target;
+    ros::Publisher pub_visible_voxels;
+    ros::ServiceServer srv_run_planner;
 
     // Time
     ros::Time ros_timer;
+
+    // visualization
+
 };
 
 

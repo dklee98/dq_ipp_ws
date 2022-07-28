@@ -7,14 +7,19 @@ using namespace Eigen;
 ray_caster_class::ray_caster_class(voxblox_class& map) : map_(map)  {
     get_param();
 
-    // cache param dependent constants
-    c_fov_x = 2.0 * atan2(p_resolution_x, p_focal_length * 2.0);
-    c_fov_y = 2.0 * atan2(p_resolution_y, p_focal_length * 2.0);
 }
 
 void ray_caster_class::get_param()    {
     p_ray_step = map_.getVoxelSize();  // "default voxel_size"
     p_downsampling_factor = 5.0;            // "default 1.0"
+    p_ray_length = 5.0;
+    p_focal_length = 320.0;
+    p_resolution_x = 640;
+    p_resolution_y = 480;
+
+    // cache param dependent constants
+    c_fov_x = 2.0 * atan2(p_resolution_x, p_focal_length * 2.0);    // 3.079
+    c_fov_y = 2.0 * atan2(p_resolution_y, p_focal_length * 2.0);    // 3.017
 
     // Downsample to voxel size resolution at max range
     c_res_x = std::min(
@@ -46,7 +51,7 @@ bool ray_caster_class::getVisibleVoxels(std::vector<Eigen::Vector3d>* result,
     // Ray-casting
     Eigen::Vector3d camera_direction;
     Eigen::Vector3d direction;
-    Eigen::Vector3d current_position;
+    Eigen::Vector3d current_pos;
     Eigen::Vector3d voxel_center;
     double distance;
     bool cast_ray;
@@ -66,14 +71,14 @@ bool ray_caster_class::getVisibleVoxels(std::vector<Eigen::Vector3d>* result,
             while (cast_ray) {
                 // iterate through all splits (segments)
                 while (distance < c_split_distances[current_segment + 1]) {
-                    current_position = position + distance * direction;
+                    current_pos = position + distance * direction;
                     distance += p_ray_step;
 
-                    map_.getVoxelCenter(&voxel_center, current_position);
+                    map_.getVoxelCenter(&voxel_center, current_pos);
                     result->push_back(voxel_center);
 
                     // Check voxel occupied
-                    if (map_.getVoxelState(current_position) == voxblox_class::OCCUPIED) {
+                    if (map_.getVoxelState(current_pos) == voxblox_class::OCCUPIED) {
                         // Occlusion, mark neighboring rays as occluded
                         markNeighboringRays(i, j, current_segment, -1);
                         cast_ray = false;

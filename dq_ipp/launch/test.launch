@@ -47,8 +47,8 @@
     <node name="tf_broader" pkg="dq_ipp" type="tf_broadcaster.py" output="screen"/>
     <!-- <node name="tf_converter" pkg="dq_ipp" type="tf_converter.py" output="screen"/> -->
 
-    <!-- mapping node -->
-    <node name="mapping_node" pkg="dq_ipp" type="mapping_node" output="screen">
+    <!-- rgbd node -->
+    <node name="rgbd_node" pkg="dq_ipp" type="rgbd_node" output="screen">
         <rosparam param="/cam_intrinsic">[640, 480, 319.998, 319.998, 320.5, 240.5]</rosparam> <!-- width, height, f_x, f_y, c_x, c_y -->
         <rosparam param="/cam_extrinsic">[0.1, 0.0, 0.02]</rosparam> <!-- body to cam: translation x, y, z, downward pitch angle (rad) -->
     </node>
@@ -103,6 +103,7 @@
     <node name="planner_node" pkg="dq_ipp" type="planner_node" output="screen">
         <remap from="planner_node/esdf_map_in" to="voxblox_node/esdf_map_out" />
         <remap from="planner_node/tsdf_map_in" to="voxblox_node/tsdf_map_out" />
+        <param name="use_tf_transforms" value="false"/>
         <param name="tsdf_voxel_size" value="$(arg voxel_size)" />
         <param name="tsdf_voxels_per_side" value="$(arg voxels_per_side)" />
         <param name="update_mesh_every_n_sec" value="0.0" /> 
@@ -110,6 +111,7 @@
         <param name="publish_pointclouds" value="true" />
 
         <remap from="odometry" to="/mavros/local_position/pose" />
+        <!-- <remap from="command/trajectory" to="command/trajectory" /> -->
 
     </node>
 

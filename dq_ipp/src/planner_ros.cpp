@@ -9,16 +9,19 @@ planner_ros_class::planner_ros_class(const ros::NodeHandle& nh,
         : planner_class(), nh_(nh), nh_private_(nh_private)  {
     // get_param();
 
-    pub_target = nh_.advertise<trajectory_msgs::MultiDOFJointTrajectory>("command/trajectory", 10);
     sub_pose = nh_.subscribe("odometry", 1, &planner_ros_class::cb_pose, this);
+    pub_target = nh_.advertise<trajectory_msgs::MultiDOFJointTrajectory>("command/trajectory", 10);
+    pub_visible_voxels = nh_.advertise<visualization_msgs::MarkerArray>("visualization/visible_voxels", 1);
+
+    srv_run_planner = nh_private_.advertiseService("toggle_running", &planner_ros_class::cb_srv_run_planner, this);
 
     ROS_INFO_STREAM("\n******************** Initialized Planner ********************\n");
 }
 
 void planner_ros_class::cb_pose(const geometry_msgs::PoseStamped& msg) {
     // Track the current pose
-    current_position = Eigen::Vector3d(msg.pose.position.x, msg.pose.position.y, msg.pose.position.z);
-    current_orientation = Eigen::Quaterniond(msg.pose.orientation.w, msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z);
+    g_current_position = Eigen::Vector3d(msg.pose.position.x, msg.pose.position.y, msg.pose.position.z);
+    g_current_orientation = Eigen::Quaterniond(msg.pose.orientation.w, msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z);
 
     // // check target reached 
     // if (running_ && !target_reached_) {
@@ -35,4 +38,52 @@ void planner_ros_class::cb_pose(const geometry_msgs::PoseStamped& msg) {
     //         }
     //     }
     // }
+}
+
+bool planner_ros_class::cb_srv_run_planner(std_srvs::SetBool::Request& req, 
+                                            std_srvs::SetBool::Response& res)   {
+    res.success = true;
+    if (req.data)   {
+        f_planning = true;
+        ROS_INFO("Started planning.");
+    }
+    else{
+        f_planning = false;
+        ROS_INFO("Stopped planning.");
+    }
+    return true;
+}
+
+void planner_ros_class::planning_loop() {
+    // This is the main loop, spinning is managed explicitely for efficiency
+    ROS_INFO("\n******************** Planner is now Running ********************\n");
+    while(ros::ok())    {
+        if (f_planning) {
+            test();
+        }
+        ros::spinOnce();
+    }
+}
+
+void planner_ros_class::v_visible_voxels(std::vector<Eigen::Vector3d> voxels, double voxel_size) {
+    visualization_msgs::MarkerArray arr_marker;
+    for (int i = 0; i < voxels.size(); ++i) {
+        geometry_msgs::Point point;
+        visualization_msgs::Marker marker;
+        marker.header.frame_id = "world";
+        marker.header.stamp = ros::Time::now();
+        marker.type = visualization_msgs::Marker::CUBE;
+        marker.id = i;
+        marker.action = visualization_msgs::Marker::ADD;
+        marker.scale.x = marker.scale.y = marker.scale.z = voxel_size;
+        marker.pose.orientation.w = 1.0;
+        marker.pose.position.x = voxels[i][0];
+        marker.pose.position.y = voxels[i][1];
+        marker.pose.position.z = voxels[i][2];
+        marker.color.g = 0.5;
+        marker.color.a = 1.0;
+        arr_marker.markers.push_back(marker);
+    }
+    pub_visible_voxels.publish(arr_marker);
+    std::cout << arr_marker.markers.size() << std::endl;
 }

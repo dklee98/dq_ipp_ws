@@ -1,10 +1,10 @@
-#include "mapping.h"
+#include "rgbd.h"
 
 using namespace std;
 using namespace std::chrono;
 using namespace Eigen;
 
-mapping_class::mapping_class(const ros::NodeHandle& n) : nh(n)  
+rgbd_class::rgbd_class(const ros::NodeHandle& n) : nh(n)  
 {
     ROS_WARN("Class generating...");
     get_param();
@@ -14,7 +14,7 @@ mapping_class::mapping_class(const ros::NodeHandle& n) : nh(n)
     m_body_t_cam.block<3, 1>(0, 3) = Vector3d(m_cam_extrinsic[0], m_cam_extrinsic[1], m_cam_extrinsic[2]);
 
     // Subscriber
-    sub_pose = nh.subscribe<geometry_msgs::PoseStamped>("/mavros/local_position/pose", 3, &mapping_class::cb_pose, this);
+    sub_pose = nh.subscribe<geometry_msgs::PoseStamped>("/mavros/local_position/pose", 3, &rgbd_class::cb_pose, this);
 
     // Publisher
     pub_pointcloud = nh.advertise<sensor_msgs::PointCloud2>("/aligned_points", 10);
@@ -25,13 +25,13 @@ mapping_class::mapping_class(const ros::NodeHandle& n) : nh(n)
     sub_depth.subscribe(nh, m_depth_topic, 5);
     sub_rgb.subscribe(nh, m_rgb_topic, 5);
     static message_filters::Synchronizer<rgbd_sync_policy> sub_rgbd_sync(rgbd_sync_policy(5), sub_depth, sub_rgb);
-    sub_rgbd_sync.registerCallback(&mapping_class::cb_rgbd, this);
+    sub_rgbd_sync.registerCallback(&rgbd_class::cb_rgbd, this);
     
 }
 
-mapping_class::~mapping_class(){}
+rgbd_class::~rgbd_class(){}
 
-void mapping_class::get_param()    
+void rgbd_class::get_param()    
 {
     nh.param<std::string>("/depth_topic_name", m_depth_topic, "/dji_matrice_100/camera/depth/image_raw");
     nh.param<std::string>("/rgb_topic_name", m_rgb_topic, "/dji_matrice_100/camera/rgb/image_raw");
@@ -40,7 +40,7 @@ void mapping_class::get_param()
     nh.getParam("/cam_intrinsic", m_cam_intrinsic);
 }
 
-void mapping_class::cb_pose(const geometry_msgs::PoseStamped::ConstPtr& msg)    {
+void rgbd_class::cb_pose(const geometry_msgs::PoseStamped::ConstPtr& msg)    {
     geometry_msgs::Pose pose = msg->pose;
     Matrix4d tmp_mat = Matrix4d::Identity();
 
@@ -55,7 +55,7 @@ void mapping_class::cb_pose(const geometry_msgs::PoseStamped::ConstPtr& msg)    
     m_pose_check=true;
 }
 
-void mapping_class::cb_rgbd(const sensor_msgs::Image::ConstPtr& depth_msg, const sensor_msgs::Image::ConstPtr& rgb_msg){
+void rgbd_class::cb_rgbd(const sensor_msgs::Image::ConstPtr& depth_msg, const sensor_msgs::Image::ConstPtr& rgb_msg){
 	if (m_pose_check){
 		m_downsampling_counter++;
 
@@ -103,19 +103,6 @@ void mapping_class::cb_rgbd(const sensor_msgs::Image::ConstPtr& depth_msg, const
         pub_pointcloud.publish(cloud_ros);
 
 
-        // pcl::PointCloud<pcl::PointXYZRGB>::Ptr before_voxelize(new pcl::PointCloud<pcl::PointXYZRGB>());
-        // pcl::PointCloud<pcl::PointXYZRGB>::Ptr after_voxelize(new pcl::PointCloud<pcl::PointXYZRGB>());
-        // *before_voxelize = cam_cvt_pcl;
-        // m_voxelgrid.setInputCloud(before_voxelize);
-        // m_voxelgrid.filter(*after_voxelize);
-        // cam_cvt_pcl = *after_voxelize;
-
-        //     m_tsdfesdf_voxblox->insertPointcloud(cam_cvt_pcl, map_t_cam.cast<float>());
-        //     m_tsdfesdf_voxblox->updateMesh();
-        //     voxblox_msgs::Mesh mesh_msg;
-        // m_tsdfesdf_voxblox->getTsdfMeshForPublish(mesh_msg);
-        // mesh_msg.header.frame_id = "map";
-        // m_voxblox_mesh_pub.publish(mesh_msg);
         }
 
 	}

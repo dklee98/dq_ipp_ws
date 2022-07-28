@@ -26,8 +26,8 @@ include_directories(
   ${OCTOMAP_INCLUDE_DIRS}
 )
 
-add_library(${PROJECT_NAME}_mapping
-            src/mapping.cpp
+add_library(rgbd
+            src/rgbd.cpp
 )
 
 add_library(pn_ros
@@ -46,8 +46,8 @@ add_library(rc
 
 catkin_package()
 
-add_executable(mapping_node src/mapping_node.cpp)
-target_link_libraries(mapping_node ${PROJECT_NAME}_mapping ${catkin_LIBRARIES} ${EIGEN3_LIBS} ${OpenCV_LIBS} ${OCTOMAP_LIBRARIES} )
+add_executable(rgbd_node src/rgbd_node.cpp)
+target_link_libraries(rgbd_node rgbd ${catkin_LIBRARIES} ${EIGEN3_LIBS} ${OpenCV_LIBS} ${OCTOMAP_LIBRARIES} )
 
 add_executable(planner_node src/planner_node.cpp)
 target_link_libraries(planner_node pn_ros pn vb rc ${catkin_LIBRARIES} ${EIGEN3_LIBS} ${OpenCV_LIBS} ${OCTOMAP_LIBRARIES} )

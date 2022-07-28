@@ -1,5 +1,5 @@
-#ifndef MAPPING_H
-#define MAPPING_H
+#ifndef RGBD_H
+#define RGBD_H
 
 #include "utility.hpp"
 
@@ -24,7 +24,7 @@ using namespace std::chrono;
 using namespace Eigen;
 
 
-class mapping_class{
+class rgbd_class{
 private:
     ros::NodeHandle nh;
 
@@ -55,8 +55,8 @@ private:
     void cb_pose(const geometry_msgs::PoseStamped::ConstPtr& msg);
 
 public:
-    mapping_class(const ros::NodeHandle& n);
-    ~mapping_class();
+    rgbd_class(const ros::NodeHandle& n);
+    ~rgbd_class();
 };
 
 
