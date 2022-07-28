@@ -31,9 +31,6 @@ public:
     void cb_pose(const geometry_msgs::PoseStamped& msg);
     bool cb_srv_run_planner(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res);
 
-    // Visualization
-    void v_visible_voxels(std::vector<Eigen::Vector3d> voxels, double voxel_size) override;
-
     // planning loop
     void planning_loop();
 
@@ -44,13 +41,18 @@ protected:
     // Subscriber, Publisher
     ros::Subscriber sub_pose;
     ros::Publisher pub_target;
-    ros::Publisher pub_visible_voxels;
+    ros::Publisher v_pub_visible_voxels;
+    ros::Publisher v_pub_surface_frontiers;
+    ros::Publisher v_pub_spatial_frontiers;
     ros::ServiceServer srv_run_planner;
 
     // Time
     ros::Time ros_timer;
 
-    // visualization
+
+
+    void v_voxels(std::vector<Eigen::Vector3d> voxels, double voxel_size, int print_type) override;
+
 
 };
 

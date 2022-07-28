@@ -227,6 +227,22 @@ Visualization Manager:
         {}
       Queue Size: 5
       Value: false
+    - Class: rviz/MarkerArray
+      Enabled: false
+      Marker Topic: /visualization/surface_frontiers
+      Name: surface_frontiers
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: false
+    - Class: rviz/MarkerArray
+      Enabled: false
+      Marker Topic: /visualization/spatial_frontiers
+      Name: spatial_frontiers
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48

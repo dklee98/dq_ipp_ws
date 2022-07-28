@@ -21,8 +21,9 @@ public:
     explicit planner_class();
     virtual ~planner_class() = default;
     
-    const static unsigned char SURFACE_F = 0;
-    const static unsigned char GENERAL_F = 1;
+    const static unsigned char NOT_FRONTIER = 0;
+    const static unsigned char SURFACE_FRONTIER = 1;
+    const static unsigned char SPATIAL_FRONTIER = 2;
     
     void get_param();
 
@@ -39,18 +40,32 @@ protected:
     Eigen::Vector3d target_position;
     double target_yaw;
 
+    // uncomment after coding update frontier funciton!!!
+    std::vector<Eigen::Vector3d> surface_f;
+    std::vector<Eigen::Vector3d> spatial_f;
+
     // params
     double p_checking_distance; // distance in voxelsizes where we check for known voxels
+    bool p_accurate_frontiers;
     bool p_verbose;
     
     // constants
     double c_voxel_size;
     Eigen::Vector3d c_neighbor_voxels[26];
-
-    bool isFrontierVoxel(const Eigen::Vector3d& voxel);
+    
+    void get_frontiers(std::vector<Eigen::Vector3d>* surface_result,
+                                std::vector<Eigen::Vector3d>* spatial_result,
+                                std::vector<Eigen::Vector3d> voxels);
+    void update_frontiers(std::vector<Eigen::Vector3d>* surface_result,
+                                std::vector<Eigen::Vector3d>* spatial_result);
+    int isFrontierVoxel(const Eigen::Vector3d& voxel);
 
     // Visualization
-    virtual void v_visible_voxels(std::vector<Eigen::Vector3d> voxels, double voxel_size) = 0;
+    const static unsigned char V_visible_voxels = 0;
+    const static unsigned char V_surface_frontiers = 1;
+    const static unsigned char V_spatial_frontiers = 2;
+    virtual void v_voxels(std::vector<Eigen::Vector3d> voxels, double voxel_size, int print_type) = 0;
+
 };
 
 
