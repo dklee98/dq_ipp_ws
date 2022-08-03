@@ -31,8 +31,10 @@ public:
     void cb_pose(const geometry_msgs::PoseStamped& msg);
     bool cb_srv_run_planner(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res);
 
+    void cb_timer_frontier(const ros::TimerEvent& e);
+
     // planning loop
-    void planning_loop();
+    // void planning_loop();
 
 protected:
     // ros
@@ -45,6 +47,8 @@ protected:
     ros::Publisher v_pub_surface_frontiers;
     ros::Publisher v_pub_spatial_frontiers;
     ros::ServiceServer srv_run_planner;
+
+    ros::Timer timer_frontier;
 
     // Time
     ros::Time ros_timer;

@@ -17,10 +17,10 @@ using namespace Eigen;
 
 class ray_caster_class{
 public:
-    explicit ray_caster_class(voxblox_class& map_);
+    explicit ray_caster_class(voxblox_class& map_, const ros::NodeHandle& nh);
     virtual ~ray_caster_class() = default;
 
-    void get_param();
+    void get_param(const ros::NodeHandle& nh);
 
     bool getVisibleVoxels(std::vector<Eigen::Vector3d>* result, 
                             const Eigen::Vector3d& position, 

@@ -4,18 +4,18 @@ using namespace std;
 using namespace std::chrono;
 using namespace Eigen;
 
-ray_caster_class::ray_caster_class(voxblox_class& map) : map_(map)  {
-    get_param();
+ray_caster_class::ray_caster_class(voxblox_class& map, const ros::NodeHandle& nh) : map_(map)  {
+    get_param(nh);
 
 }
 
-void ray_caster_class::get_param()    {
+void ray_caster_class::get_param(const ros::NodeHandle& nh)    {
+    nh.param("/p_downsampling_factor", p_downsampling_factor, 5.0);
+    nh.param("/p_ray_length", p_ray_length, 5.0);   // default 1.0
+    nh.param("/p_focal_length", p_focal_length, 320.0);
+    nh.param("/p_resolution_x", p_resolution_x, 640);
+    nh.param("/p_resolution_y", p_resolution_y, 480);
     p_ray_step = map_.getVoxelSize();  // "default voxel_size"
-    p_downsampling_factor = 5.0;            // "default 1.0"
-    p_ray_length = 5.0;
-    p_focal_length = 320.0;
-    p_resolution_x = 640;
-    p_resolution_y = 480;
 
     // cache param dependent constants
     c_fov_x = 2.0 * atan2(p_resolution_x, p_focal_length * 2.0);    // 3.079

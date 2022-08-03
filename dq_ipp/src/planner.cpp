@@ -4,17 +4,22 @@ using namespace std;
 using namespace std::chrono;
 using namespace Eigen;
 
-planner_class::planner_class() : f_planning(false)  {
-    get_param();
+planner_class::planner_class(const ros::NodeHandle& nh) : f_planning(false)  {
+    map_.reset(new voxblox_class(nh));
+    ray_.reset(new ray_caster_class(*map_, nh));
+    get_param(nh);
 
 }
 
-void planner_class::get_param()    {
-    p_verbose = true;
-    p_checking_distance = 1.0;
+void planner_class::get_param(const ros::NodeHandle& nh)    {
+    nh.param("/p_verbose", p_verbose, true);
+    nh.param("/p_checking_distance", p_checking_distance, 1.0);
+    nh.param("/p_accurate_frontiers", p_accurate_frontiers, false);
+    // p_verbose = false;
+    // p_checking_distance = 1.0;
     c_voxel_size = map_->getVoxelSize();
     auto vs = c_voxel_size * p_checking_distance;
-    p_accurate_frontiers = false;
+    // p_accurate_frontiers = false;
     if (!p_accurate_frontiers)  {
         c_neighbor_voxels[0] = Eigen::Vector3d(vs, 0, 0);
         c_neighbor_voxels[1] = Eigen::Vector3d(-vs, 0, 0);
@@ -152,7 +157,7 @@ void planner_class::test()  {
     ray_->getVisibleVoxels(&new_voxels, g_current_position, g_current_orientation);  // free space : 920 voxels
     new_voxels.erase(std::unique(new_voxels.begin(), new_voxels.end()), new_voxels.end());
     toc();
-    ROS_INFO("getVisiblevoxels");
+    ROS_INFO("getFrontiers");
     tic();
     get_frontiers(&surface_f, &spatial_f, new_voxels);
     toc();

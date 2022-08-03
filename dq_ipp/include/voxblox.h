@@ -18,8 +18,8 @@ using namespace Eigen;
 
 class voxblox_class {
 public:
-    explicit voxblox_class();
-    void get_param();
+    explicit voxblox_class(const ros::NodeHandle& p_nh);
+    void get_param(const ros::NodeHandle& p_nh);
 
     // states
     const static unsigned char OCCUPIED = 0;  // NOLINT

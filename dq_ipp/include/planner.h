@@ -16,22 +16,27 @@ using namespace std;
 using namespace std::chrono; 
 using namespace Eigen;
 
+class voxblox_class;
+class ray_caster_class;
+
 class planner_class{
 public:
-    explicit planner_class();
+    explicit planner_class(const ros::NodeHandle& nh);
     virtual ~planner_class() = default;
     
     const static unsigned char NOT_FRONTIER = 0;
     const static unsigned char SURFACE_FRONTIER = 1;
     const static unsigned char SPATIAL_FRONTIER = 2;
     
-    void get_param();
+    void get_param(const ros::NodeHandle& nh);
 
     void test();
 
 protected:
-    voxblox_class *map_ = new voxblox_class();
-    ray_caster_class *ray_ = new ray_caster_class(*map_);
+    // voxblox_class *map_ = new voxblox_class();
+    // ray_caster_class *ray_ = new ray_caster_class(*map_);
+    std::unique_ptr<voxblox_class> map_;
+    std::unique_ptr<ray_caster_class> ray_;
 
     // variables
     bool f_planning;    // flag

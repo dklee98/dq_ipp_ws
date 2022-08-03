@@ -6,7 +6,7 @@ using namespace Eigen;
 
 planner_ros_class::planner_ros_class(const ros::NodeHandle& nh,
                                     const ros::NodeHandle& nh_private)
-        : planner_class(), nh_(nh), nh_private_(nh_private)  {
+        : planner_class(nh), nh_(nh), nh_private_(nh_private)  {
     // get_param();
 
     sub_pose = nh_.subscribe("odometry", 1, &planner_ros_class::cb_pose, this);
@@ -14,6 +14,8 @@ planner_ros_class::planner_ros_class(const ros::NodeHandle& nh,
     v_pub_visible_voxels = nh_.advertise<visualization_msgs::MarkerArray>("visualization/visible_voxels", 1);
     v_pub_surface_frontiers = nh_.advertise<visualization_msgs::MarkerArray>("visualization/surface_frontiers", 1);
     v_pub_spatial_frontiers = nh_.advertise<visualization_msgs::MarkerArray>("visualization/spatial_frontiers", 1);
+
+    timer_frontier = nh.createTimer(ros::Duration(0.5), &planner_ros_class::cb_timer_frontier, this);
 
     srv_run_planner = nh_private_.advertiseService("toggle_running", &planner_ros_class::cb_srv_run_planner, this);
 
@@ -56,15 +58,24 @@ bool planner_ros_class::cb_srv_run_planner(std_srvs::SetBool::Request& req,
     return true;
 }
 
-void planner_ros_class::planning_loop() {
-    // This is the main loop, spinning is managed explicitely for efficiency
-    ROS_INFO("\n******************** Planner is now Running ********************\n");
-    while(ros::ok())    {
-        if (f_planning) {
-            test();
-        }
-        ros::spinOnce();
+// void planner_ros_class::planning_loop() {
+//     // This is the main loop, spinning is managed explicitely for efficiency
+//     ROS_INFO("\n******************** Planner is now Running ********************\n");
+//     while(ros::ok())    {
+//         if (f_planning) {
+//             test();
+//         }
+//         ros::spinOnce();
+//     }
+// }
+
+void planner_ros_class::cb_timer_frontier(const ros::TimerEvent& e)    {
+    if (!f_planning)    {
+        ROS_INFO("\n******************** Planner stopped ********************\n");
+        return;
     }
+
+    test();
 }
 
 void planner_ros_class::v_voxels(std::vector<Eigen::Vector3d> voxels, 

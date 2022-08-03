@@ -4,8 +4,8 @@ using namespace std;
 using namespace std::chrono;
 using namespace Eigen;
 
-voxblox_class::voxblox_class()  {
-    get_param();
+voxblox_class::voxblox_class(const ros::NodeHandle& p_nh)  {
+    get_param(p_nh);
     // create an esdf server
     ros::NodeHandle nh("");
     ros::NodeHandle nh_private("~");
@@ -18,8 +18,9 @@ voxblox_class::voxblox_class()  {
     // direct access is not exposed
 }
 
-void voxblox_class::get_param()    {
-    p_collision_radius = 1.0;
+void voxblox_class::get_param(const ros::NodeHandle& p_nh)    {
+    // p_collision_radius = 1.0;
+    p_nh.param("/p_collision_radius", p_collision_radius, 1.0);
 }
 
 bool voxblox_class::isObserved(const Eigen::Vector3d& point) {
