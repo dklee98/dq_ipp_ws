@@ -15,7 +15,9 @@ planner_ros_class::planner_ros_class(const ros::NodeHandle& nh,
     v_pub_surface_frontiers = nh_.advertise<visualization_msgs::MarkerArray>("visualization/surface_frontiers", 1);
     v_pub_spatial_frontiers = nh_.advertise<visualization_msgs::MarkerArray>("visualization/spatial_frontiers", 1);
 
-    timer_frontier = nh.createTimer(ros::Duration(0.5), &planner_ros_class::cb_timer_frontier, this);
+    v_ftrs_clusters = nh_.advertise<visualization_msgs::MarkerArray>("visualization/clustered_frontiers", 1);
+
+    timer_frontier = nh_.createTimer(ros::Duration(0.5), &planner_ros_class::cb_timer_frontier, this);
 
     srv_run_planner = nh_private_.advertiseService("toggle_running", &planner_ros_class::cb_srv_run_planner, this);
 
@@ -58,23 +60,11 @@ bool planner_ros_class::cb_srv_run_planner(std_srvs::SetBool::Request& req,
     return true;
 }
 
-// void planner_ros_class::planning_loop() {
-//     // This is the main loop, spinning is managed explicitely for efficiency
-//     ROS_INFO("\n******************** Planner is now Running ********************\n");
-//     while(ros::ok())    {
-//         if (f_planning) {
-//             test();
-//         }
-//         ros::spinOnce();
-//     }
-// }
-
 void planner_ros_class::cb_timer_frontier(const ros::TimerEvent& e)    {
     if (!f_planning)    {
         ROS_INFO("\n******************** Planner stopped ********************\n");
         return;
     }
-
     test();
 }
 
@@ -106,12 +96,7 @@ void planner_ros_class::v_voxels(std::vector<Eigen::Vector3d> voxels,
             marker.color.b = 0.5;
             marker.color.a = 1.0;
         }
-        marker.color.g = 0.5;
-        marker.color.a = 1.0;
         arr_marker.markers.push_back(marker);
-        if(i > 1000)        {
-            arr_marker.markers.erase(arr_marker.markers.begin());
-        }
     }
     if (print_type == V_visible_voxels)   {
         v_pub_visible_voxels.publish(arr_marker);
@@ -126,3 +111,27 @@ void planner_ros_class::v_voxels(std::vector<Eigen::Vector3d> voxels,
         ROS_INFO("len spatial markers : %6d", arr_marker.markers.size());
     }
 }
+
+void planner_ros_class::v_frontiers() {
+    visualization_msgs::MarkerArray arr_marker;
+    int sampler = 50;
+    for (auto& ftr : ft_->frontiers) {
+        visualization_msgs::Marker marker;
+        marker.header.frame_id = "world";
+        marker.header.stamp = ros::Time::now();
+        marker.type = visualization_msgs::Marker::CUBE;
+        marker.id = ftr.id_;
+        marker.action = visualization_msgs::Marker::ADD;
+        marker.scale.x = marker.scale.y = marker.scale.z = 
+            (ftr.filtered_cells_.size()/sampler) + (ftr.filtered_cells_.size()%sampler)/sampler;
+        marker.pose.orientation.w = 1.0;
+        marker.pose.position.x = ftr.average_[0];
+        marker.pose.position.y = ftr.average_[1];
+        marker.pose.position.z = ftr.average_[2];
+        marker.color.r = 0.5;
+        marker.color.a = 0.5;
+        arr_marker.markers.push_back(marker);
+    }
+    v_ftrs_clusters.publish(arr_marker);
+}
+

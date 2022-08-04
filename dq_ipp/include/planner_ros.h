@@ -46,6 +46,7 @@ protected:
     ros::Publisher v_pub_visible_voxels;
     ros::Publisher v_pub_surface_frontiers;
     ros::Publisher v_pub_spatial_frontiers;
+    ros::Publisher v_ftrs_clusters;
     ros::ServiceServer srv_run_planner;
 
     ros::Timer timer_frontier;
@@ -53,10 +54,8 @@ protected:
     // Time
     ros::Time ros_timer;
 
-
-
     void v_voxels(std::vector<Eigen::Vector3d> voxels, double voxel_size, int print_type) override;
-
+    void v_frontiers() override;
 
 };
 

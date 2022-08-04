@@ -42,6 +42,9 @@ add_library(vb
 add_library(rc
             src/ray_caster.cpp
 )
+add_library(ft
+            src/frontier.cpp
+)
 
 
 catkin_package()
@@ -50,4 +53,4 @@ add_executable(rgbd_node src/rgbd_node.cpp)
 target_link_libraries(rgbd_node rgbd ${catkin_LIBRARIES} ${EIGEN3_LIBS} ${OpenCV_LIBS} ${OCTOMAP_LIBRARIES} )
 
 add_executable(planner_node src/planner_node.cpp)
-target_link_libraries(planner_node pn_ros pn vb rc ${catkin_LIBRARIES} ${EIGEN3_LIBS} ${OpenCV_LIBS} ${OCTOMAP_LIBRARIES} )
+target_link_libraries(planner_node pn_ros pn vb rc ft ${catkin_LIBRARIES} ${EIGEN3_LIBS} ${OpenCV_LIBS} ${OCTOMAP_LIBRARIES} )
