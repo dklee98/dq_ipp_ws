@@ -72,13 +72,15 @@ public:
   void posToIndex(const Eigen::Vector3d& pos, Eigen::Vector3i& id);
   void indexToPos(const Eigen::Vector3i& id, Eigen::Vector3d& pos);
   int toAddress(const Eigen::Vector3i& id);
-  bool knownfree(const Eigen::Vector3i& idx);
+  bool knownFree(const Eigen::Vector3i& idx);
+  bool knownOccupied(const Eigen::Vector3i& idx);
   bool isNeighborUnknown(const Eigen::Vector3i& voxel);
   std::vector<Eigen::Vector3i> sixNeighbors(const Eigen::Vector3i& voxel);
   std::vector<Eigen::Vector3i> allNeighbors(const Eigen::Vector3i& voxel);
 
   //////////////
-
+  bool isSpatialFrontiers(const Eigen::Vector3i& id);
+  bool isSurfaceFrontiers(const Eigen::Vector3i& id);
 
     
   std::list<Frontier> frontiers, tmp_frontiers;

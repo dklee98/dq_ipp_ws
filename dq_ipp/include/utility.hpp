@@ -142,13 +142,16 @@ void depth_img_to_pcl(const cv::Mat &depth_img, const cv::Mat &rgb_img, const do
       pcl::PointXYZRGB p3d;
       if (!std::isnan(temp_depth)){
         p3d.z = temp_depth/scale_factor; 
-        p3d.x = ( j - cam_intrinsic[4] ) * p3d.z / cam_intrinsic[2];
-        p3d.y = ( i - cam_intrinsic[5] ) * p3d.z / cam_intrinsic[3];
-        p3d.r = rgb_img.at<cv::Vec3b>(i,j)[2];
-        p3d.g = rgb_img.at<cv::Vec3b>(i,j)[1];
-        p3d.b = rgb_img.at<cv::Vec3b>(i,j)[0];
-        cam_cvt_pcl.push_back(p3d);
       }
+      else{
+        p3d.z = 20.0;
+      }
+      p3d.x = ( j - cam_intrinsic[4] ) * p3d.z / cam_intrinsic[2];
+      p3d.y = ( i - cam_intrinsic[5] ) * p3d.z / cam_intrinsic[3];
+      p3d.r = rgb_img.at<cv::Vec3b>(i,j)[2];
+      p3d.g = rgb_img.at<cv::Vec3b>(i,j)[1];
+      p3d.b = rgb_img.at<cv::Vec3b>(i,j)[0];
+      cam_cvt_pcl.push_back(p3d);
     }
   }
 }

@@ -119,17 +119,35 @@ void planner_ros_class::v_frontiers() {
         visualization_msgs::Marker marker;
         marker.header.frame_id = "world";
         marker.header.stamp = ros::Time::now();
-        marker.type = visualization_msgs::Marker::CUBE;
+        marker.type = visualization_msgs::Marker::CUBE_LIST;
         marker.id = ftr.id_;
         marker.action = visualization_msgs::Marker::ADD;
-        marker.scale.x = marker.scale.y = marker.scale.z = 
-            (ftr.filtered_cells_.size()/sampler) + (ftr.filtered_cells_.size()%sampler)/sampler;
+        // marker.scale.x = marker.scale.y = marker.scale.z = 
+        //     1 + (ftr.filtered_cells_.size()/sampler) + (ftr.filtered_cells_.size()%sampler)/sampler;
+        marker.scale.x = marker.scale.y = marker.scale.z = c_voxel_size;
         marker.pose.orientation.w = 1.0;
-        marker.pose.position.x = ftr.average_[0];
-        marker.pose.position.y = ftr.average_[1];
-        marker.pose.position.z = ftr.average_[2];
-        marker.color.r = 0.5;
-        marker.color.a = 0.5;
+        for (auto& cell : ftr.filtered_cells_)  {
+            geometry_msgs::Point cube_center;
+            cube_center.x = cell[0];
+            cube_center.y = cell[1];
+            cube_center.z = cell[2];
+            marker.points.push_back(cube_center);
+            std_msgs::ColorRGBA color_msg;
+            srand(ftr.id_);
+            if (ftr.id_ % 3 == 0)
+                color_msg.r = 0 + (float)(rand()) / ((float)(RAND_MAX/(1-0)));
+            else if (ftr.id_ % 3 == 1)
+                color_msg.g = 0 + (float)(rand()) / ((float)(RAND_MAX/(1-0)));
+            else if (ftr.id_ % 3 == 2)
+                color_msg.b = 0 + (float)(rand()) / ((float)(RAND_MAX/(1-0)));
+            color_msg.a = 0.5;
+            marker.colors.push_back(color_msg);
+        }
+        // marker.pose.position.x = ftr.average_[0];
+        // marker.pose.position.y = ftr.average_[1];
+        // marker.pose.position.z = ftr.average_[2];
+        // marker.color.r = 0.5;
+        // marker.color.a = 0.5;
         arr_marker.markers.push_back(marker);
     }
     v_ftrs_clusters.publish(arr_marker);

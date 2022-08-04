@@ -63,7 +63,7 @@ void frontier_class::searchFrontiers(std::vector<Eigen::Vector3d> new_voxels) {
     for (int i = 0; i < new_voxels.size(); ++i) {
         posToIndex(new_voxels[i], idx);
         Eigen::Vector3i cur(idx(0), idx(1), idx(2));
-        if (frontier_flag[toAddress(cur)] == 0 && knownfree(cur) && isNeighborUnknown(cur)) {
+        if (frontier_flag[toAddress(cur)] == 0 && isSpatialFrontiers(idx)) {
             // ROS_INFO("\n******************** expand frontier ********************\n");
             expandFrontier(cur);
         }
@@ -89,16 +89,16 @@ void frontier_class::expandFrontier(const Eigen::Vector3i& first) {
         cell_queue.pop();
         auto nbrs = allNeighbors(cur);
         for (auto nbr : nbrs) {
-        // Qualified cell should be inside bounding box and frontier cell not clustered
-        int adr = toAddress(nbr);
-        if (frontier_flag[adr] == 1  || !(knownfree(nbr) && isNeighborUnknown(nbr)))
-            continue;
+            // Qualified cell should be inside bounding box and frontier cell not clustered
+            int adr = toAddress(nbr);
+            if (frontier_flag[adr] == 1  || !isSpatialFrontiers(nbr))
+                continue;
 
-        indexToPos(nbr, pos);
-        if (pos[2] < 0.4) continue;  // Remove noise close to ground
-        expanded.push_back(pos);
-        cell_queue.push(nbr);
-        frontier_flag[adr] = 1;
+            indexToPos(nbr, pos);
+            if (pos[2] < 0.4) continue;  // Remove noise close to ground
+            expanded.push_back(pos);
+            cell_queue.push(nbr);
+            frontier_flag[adr] = 1;
         }
     }
     if (expanded.size() > p_cluster_min) {
@@ -192,7 +192,7 @@ bool frontier_class::isFrontierChanged(const Frontier& ft) {
   for (auto cell : ft.cells_) {
     Eigen::Vector3i idx;
     posToIndex(cell, idx);
-    if (!(knownfree(idx) && isNeighborUnknown(idx))) return true;
+    if (!isSpatialFrontiers(idx)) return true;
   }
   return false;
 }
@@ -282,10 +282,16 @@ int frontier_class::toAddress(const Eigen::Vector3i& id) {
     return id[0] * c_map_voxel_num(1) * c_map_voxel_num(2) + id[1] * c_map_voxel_num(2) + id[2];
 }
 
-bool frontier_class::knownfree(const Eigen::Vector3i& idx) {
+bool frontier_class::knownFree(const Eigen::Vector3i& idx) {
     Eigen::Vector3d pos;
     indexToPos(idx, pos);
     return map_.getVoxelState(pos) == voxblox_class::FREE;
+}
+
+bool frontier_class::knownOccupied(const Eigen::Vector3i& idx) {
+    Eigen::Vector3d pos;
+    indexToPos(idx, pos);
+    return map_.getVoxelState(pos) == voxblox_class::OCCUPIED;
 }
 
 bool frontier_class::isNeighborUnknown(const Eigen::Vector3i& voxel) {
@@ -334,3 +340,11 @@ std::vector<Eigen::Vector3i> frontier_class::allNeighbors(const Eigen::Vector3i&
 }
 
 ////////////////
+
+bool frontier_class::isSpatialFrontiers(const Eigen::Vector3i& id)  {
+    return (knownFree(id) && isNeighborUnknown(id));
+}
+
+bool frontier_class::isSurfaceFrontiers(const Eigen::Vector3i& id)  {
+    return (knownOccupied(id) && isNeighborUnknown(id));
+}
