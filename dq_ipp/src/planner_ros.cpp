@@ -12,8 +12,8 @@ planner_ros_class::planner_ros_class(const ros::NodeHandle& nh,
     sub_pose = nh_.subscribe("odometry", 1, &planner_ros_class::cb_pose, this);
     pub_target = nh_.advertise<trajectory_msgs::MultiDOFJointTrajectory>("command/trajectory", 10);
     v_pub_visible_voxels = nh_.advertise<visualization_msgs::MarkerArray>("visualization/visible_voxels", 1);
-    v_pub_surface_frontiers = nh_.advertise<visualization_msgs::MarkerArray>("visualization/surface_frontiers", 1);
-    v_pub_spatial_frontiers = nh_.advertise<visualization_msgs::MarkerArray>("visualization/spatial_frontiers", 1);
+    // v_pub_surface_frontiers = nh_.advertise<visualization_msgs::MarkerArray>("visualization/surface_frontiers", 1);
+    // v_pub_spatial_frontiers = nh_.advertise<visualization_msgs::MarkerArray>("visualization/spatial_frontiers", 1);
 
     v_ftrs_clusters = nh_.advertise<visualization_msgs::MarkerArray>("visualization/clustered_frontiers", 1);
 
@@ -68,48 +68,54 @@ void planner_ros_class::cb_timer_frontier(const ros::TimerEvent& e)    {
     test();
 }
 
-void planner_ros_class::v_voxels(std::vector<Eigen::Vector3d> voxels, 
-                                double voxel_size,
-                                int print_type) {
+void planner_ros_class::v_voxels(std::vector<Eigen::Vector3d> voxels) {
     visualization_msgs::MarkerArray arr_marker;
+    visualization_msgs::Marker marker;
+    marker.header.frame_id = "world";
+    marker.header.stamp = ros::Time::now();
+    marker.type = visualization_msgs::Marker::CUBE_LIST;
+    marker.id = 0;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.scale.x = marker.scale.y = marker.scale.z = c_voxel_size;
+    marker.pose.orientation.w = 1.0;
+
+    Eigen::Vector3d bmin = voxels.front();
+    Eigen::Vector3d bmax = voxels.front();
+    
     for (int i = 0; i < voxels.size(); ++i) {
-        visualization_msgs::Marker marker;
-        marker.header.frame_id = "world";
-        marker.header.stamp = ros::Time::now();
-        marker.type = visualization_msgs::Marker::CUBE;
-        marker.id = i;
-        marker.action = visualization_msgs::Marker::ADD;
-        marker.scale.x = marker.scale.y = marker.scale.z = voxel_size;
-        marker.pose.orientation.w = 1.0;
-        marker.pose.position.x = voxels[i][0];
-        marker.pose.position.y = voxels[i][1];
-        marker.pose.position.z = voxels[i][2];
-        if (print_type == V_visible_voxels)   {
-            marker.color.g = 0.5;
-            marker.color.a = 1.0;
+        for (int j = 0; j < 3; ++j) {
+            bmin[j] = min(bmin[j], voxels[i][j]);
+            bmax[j] = max(bmax[j], voxels[i][j]);
         }
-        else if (print_type == V_surface_frontiers)   {
-            marker.color.r = 0.5;
-            marker.color.a = 1.0;
-        }
-        else if (print_type == V_spatial_frontiers)   {
-            marker.color.b = 0.5;
-            marker.color.a = 1.0;
-        }
-        arr_marker.markers.push_back(marker);
+        geometry_msgs::Point cube_center;
+        cube_center.x = voxels[i][0];
+        cube_center.y = voxels[i][1];
+        cube_center.z = voxels[i][2];
+        marker.points.push_back(cube_center);
+        std_msgs::ColorRGBA color_msg;
+        color_msg.g = 0.5;
+        color_msg.a = 0.5;
+        marker.colors.push_back(color_msg);
     }
-    if (print_type == V_visible_voxels)   {
-        v_pub_visible_voxels.publish(arr_marker);
-        ROS_INFO("len visible markers : %6d", arr_marker.markers.size());
-    }
-    else if (print_type == V_surface_frontiers)   {
-        v_pub_surface_frontiers.publish(arr_marker);
-        ROS_INFO("len surface markers : %6d", arr_marker.markers.size());
-    }
-    else if (print_type == V_spatial_frontiers)   {
-        v_pub_spatial_frontiers.publish(arr_marker);
-        ROS_INFO("len spatial markers : %6d", arr_marker.markers.size());
-    }
+    arr_marker.markers.push_back(marker);
+    // bbox
+    visualization_msgs::Marker b_marker;
+    b_marker.header.frame_id = "world";
+    b_marker.header.stamp = ros::Time::now();
+    b_marker.type = visualization_msgs::Marker::CUBE;
+    b_marker.id = 1;
+    b_marker.action = visualization_msgs::Marker::ADD;
+    b_marker.scale.x = bmax[0] - bmin[0];
+    b_marker.scale.y = bmax[1] - bmin[1];
+    b_marker.scale.z = bmax[2] - bmin[2];
+    b_marker.pose.orientation.w = 1.0;
+    b_marker.pose.position.x = (bmin[0] + bmax[0]) / 2;
+    b_marker.pose.position.y = (bmin[1] + bmax[1]) / 2;
+    b_marker.pose.position.z = (bmin[2] + bmax[2]) / 2;
+    b_marker.color.b = 0.5;
+    b_marker.color.a = 0.5;
+    arr_marker.markers.push_back(b_marker);
+    v_pub_visible_voxels.publish(arr_marker);
 }
 
 void planner_ros_class::v_frontiers() {
@@ -122,11 +128,9 @@ void planner_ros_class::v_frontiers() {
         marker.type = visualization_msgs::Marker::CUBE_LIST;
         marker.id = ftr.id_;
         marker.action = visualization_msgs::Marker::ADD;
-        // marker.scale.x = marker.scale.y = marker.scale.z = 
-        //     1 + (ftr.filtered_cells_.size()/sampler) + (ftr.filtered_cells_.size()%sampler)/sampler;
         marker.scale.x = marker.scale.y = marker.scale.z = c_voxel_size;
         marker.pose.orientation.w = 1.0;
-        for (auto& cell : ftr.filtered_cells_)  {
+        for (auto& cell : ftr.cells_)  {
             geometry_msgs::Point cube_center;
             cube_center.x = cell[0];
             cube_center.y = cell[1];
@@ -143,13 +147,22 @@ void planner_ros_class::v_frontiers() {
             color_msg.a = 0.5;
             marker.colors.push_back(color_msg);
         }
-        // marker.pose.position.x = ftr.average_[0];
-        // marker.pose.position.y = ftr.average_[1];
-        // marker.pose.position.z = ftr.average_[2];
-        // marker.color.r = 0.5;
-        // marker.color.a = 0.5;
+        geometry_msgs::Point cube_avg;
+        cube_avg.x = ftr.average_[0];
+        cube_avg.y = ftr.average_[1];
+        cube_avg.z = ftr.average_[2];
+        marker.points.push_back(cube_avg);
+        std_msgs::ColorRGBA color_msg;
+        color_msg.r = 1.0;
+        color_msg.g = 1.0;
+        color_msg.b = 1.0;
+        color_msg.a = 1.0;
+        marker.colors.push_back(color_msg);
+
         arr_marker.markers.push_back(marker);
     }
     v_ftrs_clusters.publish(arr_marker);
 }
+
+
 

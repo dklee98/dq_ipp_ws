@@ -59,7 +59,7 @@ public:
   void get_param(const ros::NodeHandle& nh);
 
   void searchFrontiers(std::vector<Eigen::Vector3d> new_voxels);
-  void expandFrontier(const Eigen::Vector3i& first);
+  void expandFrontier(const Eigen::Vector3i& first, Eigen::Vector3d& bbmin, Eigen::Vector3d& bbmax);
   void splitLargeFrontiers(list<Frontier>& ftrs);
   bool splitHorizontally(const Frontier& frontier, list<Frontier>& splits);
   bool isFrontierChanged(const Frontier& ft);
@@ -74,13 +74,19 @@ public:
   int toAddress(const Eigen::Vector3i& id);
   bool knownFree(const Eigen::Vector3i& idx);
   bool knownOccupied(const Eigen::Vector3i& idx);
-  bool isNeighborUnknown(const Eigen::Vector3i& voxel);
+  bool knownUnknown(const Eigen::Vector3i& idx);
+  bool isNeighborUnknown(const Eigen::Vector3i& voxel, int th);
+  bool isNeighborOccupied(const Eigen::Vector3i& voxel);
+  bool haveOverlap(const Eigen::Vector3d& min1, const Eigen::Vector3d& max1, 
+                  const Eigen::Vector3d& min2, const Eigen::Vector3d& max2);
   std::vector<Eigen::Vector3i> sixNeighbors(const Eigen::Vector3i& voxel);
   std::vector<Eigen::Vector3i> allNeighbors(const Eigen::Vector3i& voxel);
 
   //////////////
   bool isSpatialFrontiers(const Eigen::Vector3i& id);
   bool isSurfaceFrontiers(const Eigen::Vector3i& id);
+  void getVisibleBox(Eigen::Vector3d& bmin, Eigen::Vector3d& bmax,
+                       std::vector<Eigen::Vector3d> new_voxels);
 
     
   std::list<Frontier> frontiers, tmp_frontiers;

@@ -27,19 +27,12 @@ void planner_class::test()  {
     // toc();
     // ROS_INFO("getFrontiers");
     // tic();
-    // ft_->get_frontiers(&surface_f, &spatial_f, new_voxels);
     ft_->searchFrontiers(new_voxels);
     ft_->computeFrontiersToVisit();
     // toc();
     if (p_verbose)  {
-        v_voxels(new_voxels, c_voxel_size, V_visible_voxels);
+        v_voxels(new_voxels);
         v_frontiers();
-        // for (auto& ftr : ft_->frontiers) {
-        //     v_voxels(ftr.cells_, c_voxel_size, V_surface_frontiers);
-        // }
-        
-        // v_voxels(surface_f, c_voxel_size, V_surface_frontiers);
-        // v_voxels(spatial_f, c_voxel_size, V_spatial_frontiers);
     }
     
 }

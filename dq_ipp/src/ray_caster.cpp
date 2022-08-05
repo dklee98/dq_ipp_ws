@@ -10,13 +10,11 @@ ray_caster_class::ray_caster_class(voxblox_class& map, const ros::NodeHandle& nh
 }
 
 void ray_caster_class::get_param(const ros::NodeHandle& nh)    {
-    nh.param("/p_downsampling_factor", p_downsampling_factor, 5.0);
+    nh.param("/p_downsampling_factor", p_downsampling_factor, 2.0);
     nh.param("/p_ray_length", p_ray_length, 5.0);   // default 1.0
     nh.param("/p_focal_length", p_focal_length, 320.0);
     nh.param("/p_resolution_x", p_resolution_x, 640);
     nh.param("/p_resolution_y", p_resolution_y, 480);
-    // std::cout << "p_downsampling_factor: " << p_downsampling_factor << std::endl;
-    // std::cout << "p_ray_length: " << p_ray_length << std::endl<< std::endl;
     p_ray_step = map_.getVoxelSize();  // "default voxel_size"
 
     // cache param dependent constants

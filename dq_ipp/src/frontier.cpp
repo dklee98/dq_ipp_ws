@@ -22,7 +22,7 @@ void frontier_class::get_param(const ros::NodeHandle& nh)    {
     
     c_voxel_size = map_.getVoxelSize();
     c_voxel_size_inv = 1 / c_voxel_size;
-    c_map_origin = Eigen::Vector3d(-x_size / 2.0, -y_size / 2.0, 0.5);
+    c_map_origin = Eigen::Vector3d(-x_size / 2.0, -y_size / 2.0, 1.0);
     c_map_size = Eigen::Vector3d(x_size, y_size, z_size);
     for (int i = 0; i < 3; ++i) {
         c_map_voxel_num(i) = ceil(c_map_size(i) / c_voxel_size);
@@ -34,6 +34,10 @@ void frontier_class::get_param(const ros::NodeHandle& nh)    {
 
 void frontier_class::searchFrontiers(std::vector<Eigen::Vector3d> new_voxels) {
     tmp_frontiers.clear();
+    Eigen::Vector3d new_bmin = new_voxels.front();
+    Eigen::Vector3d new_bmax = new_voxels.front();
+    getVisibleBox(new_bmin, new_bmax, new_voxels);
+
     // Removed changed frontiers in updated map
     auto resetFlag = [&](list<Frontier>::iterator& iter, list<Frontier>& ftrs) {
         Eigen::Vector3i idx;
@@ -49,7 +53,8 @@ void frontier_class::searchFrontiers(std::vector<Eigen::Vector3d> new_voxels) {
     removed_ids.clear();
     int rmv_idx = 0;
     for (auto iter = frontiers.begin(); iter != frontiers.end();)   {
-        if (isFrontierChanged(*iter))   {
+        if (haveOverlap(iter->box_min_, iter->box_max_, new_bmin, new_bmax) && 
+                isFrontierChanged(*iter))   {
             resetFlag(iter, frontiers);
             removed_ids.push_back(rmv_idx);
         } else{
@@ -63,15 +68,17 @@ void frontier_class::searchFrontiers(std::vector<Eigen::Vector3d> new_voxels) {
     for (int i = 0; i < new_voxels.size(); ++i) {
         posToIndex(new_voxels[i], idx);
         Eigen::Vector3i cur(idx(0), idx(1), idx(2));
-        if (frontier_flag[toAddress(cur)] == 0 && isSpatialFrontiers(idx)) {
+        // if (frontier_flag[toAddress(cur)] == 0 && isSpatialFrontiers(idx)) {
+        if (frontier_flag[toAddress(cur)] == 0 && isSurfaceFrontiers(idx)) {
             // ROS_INFO("\n******************** expand frontier ********************\n");
-            expandFrontier(cur);
+            expandFrontier(cur, new_bmin, new_bmax);
         }
     }
     splitLargeFrontiers(tmp_frontiers);
 }
 
-void frontier_class::expandFrontier(const Eigen::Vector3i& first) {
+void frontier_class::expandFrontier(const Eigen::Vector3i& first,
+                    Eigen::Vector3d& bbmin, Eigen::Vector3d& bbmax) {
 
     // Data for clustering
     std::queue<Eigen::Vector3i> cell_queue;
@@ -91,7 +98,8 @@ void frontier_class::expandFrontier(const Eigen::Vector3i& first) {
         for (auto nbr : nbrs) {
             // Qualified cell should be inside bounding box and frontier cell not clustered
             int adr = toAddress(nbr);
-            if (frontier_flag[adr] == 1  || !isSpatialFrontiers(nbr))
+            // if (frontier_flag[adr] == 1  || !isSpatialFrontiers(nbr))
+            if (frontier_flag[adr] == 1  || !isSurfaceFrontiers(nbr))
                 continue;
 
             indexToPos(nbr, pos);
@@ -190,9 +198,10 @@ bool frontier_class::splitHorizontally(const Frontier& frontier, list<Frontier>&
 
 bool frontier_class::isFrontierChanged(const Frontier& ft) {
   for (auto cell : ft.cells_) {
-    Eigen::Vector3i idx;
-    posToIndex(cell, idx);
-    if (!isSpatialFrontiers(idx)) return true;
+        Eigen::Vector3i idx;
+        posToIndex(cell, idx);
+        // if (!isSpatialFrontiers(idx)) return true;
+        if (!isSurfaceFrontiers(idx)) return true;
   }
   return false;
 }
@@ -200,14 +209,14 @@ bool frontier_class::isFrontierChanged(const Frontier& ft) {
 void frontier_class::computeFrontierInfo(Frontier& ftr) {
     // Compute average position and bounding box of cluster
     ftr.average_.setZero();
-    //   ftr.box_max_ = ftr.cells_.front();
-    //   ftr.box_min_ = ftr.cells_.front();
+    ftr.box_max_ = ftr.cells_.front();
+    ftr.box_min_ = ftr.cells_.front();
     for (auto cell : ftr.cells_) {
         ftr.average_ += cell;
-        // for (int i = 0; i < 3; ++i) {
-        //   ftr.box_min_[i] = min(ftr.box_min_[i], cell[i]);
-        //   ftr.box_max_[i] = max(ftr.box_max_[i], cell[i]);
-        // }
+        for (int i = 0; i < 3; ++i) {
+            ftr.box_min_[i] = min(ftr.box_min_[i], cell[i]);
+            ftr.box_max_[i] = max(ftr.box_max_[i], cell[i]);
+        }
     }
     ftr.average_ /= double(ftr.cells_.size());
 
@@ -294,15 +303,47 @@ bool frontier_class::knownOccupied(const Eigen::Vector3i& idx) {
     return map_.getVoxelState(pos) == voxblox_class::OCCUPIED;
 }
 
-bool frontier_class::isNeighborUnknown(const Eigen::Vector3i& voxel) {
+bool frontier_class::knownUnknown(const Eigen::Vector3i& idx) {
+    Eigen::Vector3d pos;
+    indexToPos(idx, pos);
+    return map_.getVoxelState(pos) == voxblox_class::UNKNOWN;
+}
+
+bool frontier_class::isNeighborUnknown(const Eigen::Vector3i& voxel, int th) {
     // At least one neighbor is unknown
+    auto nbrs = sixNeighbors(voxel);
+    Eigen::Vector3d pos;
+    int cnt = 0;
+    for (auto nbr : nbrs) {
+        if (cnt > th)    return true;
+        indexToPos(nbr, pos);
+        if (map_.getVoxelState(pos) == voxblox_class::UNKNOWN) ++cnt;
+    }
+    if (cnt > th)    return true;
+    return false;
+}
+
+bool frontier_class::isNeighborOccupied(const Eigen::Vector3i& voxel) {
+    // At least one neighbor is occupied
     auto nbrs = sixNeighbors(voxel);
     Eigen::Vector3d pos;
     for (auto nbr : nbrs) {
         indexToPos(nbr, pos);
-        if (map_.getVoxelState(pos) == voxblox_class::UNKNOWN) return true;
+        if (map_.getVoxelState(pos) == voxblox_class::OCCUPIED) return true;
     }
     return false;
+}
+
+bool frontier_class::haveOverlap(const Eigen::Vector3d& min1, const Eigen::Vector3d& max1, 
+                                const Eigen::Vector3d& min2, const Eigen::Vector3d& max2) {
+    // Check if two box have overlap part
+    Eigen::Vector3d bmin, bmax;
+    for (int i = 0; i < 3; ++i) {
+        bmin[i] = max(min1[i], min2[i]);
+        bmax[i] = min(max1[i], max2[i]);
+        if (bmin[i] > bmax[i] + 1e-3) return false;
+    }
+    return true;
 }
 
 std::vector<Eigen::Vector3i> frontier_class::sixNeighbors(const Eigen::Vector3i& voxel) {
@@ -342,9 +383,20 @@ std::vector<Eigen::Vector3i> frontier_class::allNeighbors(const Eigen::Vector3i&
 ////////////////
 
 bool frontier_class::isSpatialFrontiers(const Eigen::Vector3i& id)  {
-    return (knownFree(id) && isNeighborUnknown(id));
+    return (knownFree(id) && isNeighborUnknown(id, 0));
 }
 
 bool frontier_class::isSurfaceFrontiers(const Eigen::Vector3i& id)  {
-    return (knownOccupied(id) && isNeighborUnknown(id));
+    return (knownOccupied(id) && isNeighborUnknown(id, 1));
 }
+
+void frontier_class::getVisibleBox(Eigen::Vector3d& bmin, Eigen::Vector3d& bmax,
+                       std::vector<Eigen::Vector3d> new_voxels) {
+    for (int i = 0; i < new_voxels.size(); ++i) {
+        for (int j = 0; j < 3; ++j) {
+            bmin[j] = min(bmin[j], new_voxels[i][j]);
+            bmax[j] = max(bmax[j], new_voxels[i][j]);
+        }
+    }
+}
+
