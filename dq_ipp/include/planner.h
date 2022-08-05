@@ -73,7 +73,7 @@ protected:
     // const static unsigned char V_surface_frontiers = 1;
     // const static unsigned char V_spatial_frontiers = 2;
     virtual void v_voxels(std::vector<Eigen::Vector3d> voxels) = 0;
-    virtual void v_frontiers() = 0;
+    virtual void v_frontiers(bool isSurface) = 0;
 
 };
 

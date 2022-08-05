@@ -32,7 +32,8 @@ void planner_class::test()  {
     // toc();
     if (p_verbose)  {
         v_voxels(new_voxels);
-        v_frontiers();
+        v_frontiers(false);
+        v_frontiers(true);
     }
     
 }

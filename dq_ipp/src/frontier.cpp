@@ -16,9 +16,9 @@ void frontier_class::get_param(const ros::NodeHandle& nh)    {
     nh.param("map_size_y", y_size, 50.0);
     nh.param("map_size_z", z_size, 30.0);
     nh.param("p_down_sample", p_down_sample, 3);
-    nh.param("p_cluster_min", p_cluster_min, 100);
+    nh.param("p_spatial_cluster_min", p_spatial_cluster_min, 50);
+    nh.param("p_surface_cluster_min", p_surface_cluster_min, 30);
     nh.param("p_cluster_size_xy", p_cluster_size_xy, 2.0);
-    nh.param("p_cluster_size_z", p_cluster_size_z, 10.0);
     
     c_voxel_size = map_.getVoxelSize();
     c_voxel_size_inv = 1 / c_voxel_size;
@@ -33,7 +33,8 @@ void frontier_class::get_param(const ros::NodeHandle& nh)    {
 }
 
 void frontier_class::searchFrontiers(std::vector<Eigen::Vector3d> new_voxels) {
-    tmp_frontiers.clear();
+    tmp_spatial_frontiers.clear();
+    tmp_surface_frontiers.clear();
     Eigen::Vector3d new_bmin = new_voxels.front();
     Eigen::Vector3d new_bmax = new_voxels.front();
     getVisibleBox(new_bmin, new_bmax, new_voxels);
@@ -48,33 +49,43 @@ void frontier_class::searchFrontiers(std::vector<Eigen::Vector3d> new_voxels) {
         iter = ftrs.erase(iter);
     };
 
-    std::cout << "Before remove: " << frontiers.size() << std::endl;
+    std::cout << "Before remove: " << spatial_frontiers.size() << std::endl;
     
     removed_ids.clear();
     int rmv_idx = 0;
-    for (auto iter = frontiers.begin(); iter != frontiers.end();)   {
+    for (auto iter = spatial_frontiers.begin(); iter != spatial_frontiers.end();)   {
         if (haveOverlap(iter->box_min_, iter->box_max_, new_bmin, new_bmax) && 
                 isFrontierChanged(*iter))   {
-            resetFlag(iter, frontiers);
+            resetFlag(iter, spatial_frontiers);
             removed_ids.push_back(rmv_idx);
         } else{
             ++rmv_idx;
             ++iter;
         }
     }
-    std::cout << "After remove: " << frontiers.size() << std::endl;
+    for (auto iter = surface_frontiers.begin(); iter != surface_frontiers.end();)   {
+        // is need overlap function?????????
+        if (haveOverlap(iter->box_min_, iter->box_max_, new_bmin, new_bmax) && 
+                isFrontierChanged(*iter))   {
+            resetFlag(iter, surface_frontiers);
+            removed_ids.push_back(rmv_idx);
+        } else{
+            ++rmv_idx;
+            ++iter;
+        }
+    }
+    std::cout << "After remove: " << spatial_frontiers.size() << std::endl;
 
     Eigen::Vector3i idx;
     for (int i = 0; i < new_voxels.size(); ++i) {
         posToIndex(new_voxels[i], idx);
         Eigen::Vector3i cur(idx(0), idx(1), idx(2));
-        // if (frontier_flag[toAddress(cur)] == 0 && isSpatialFrontiers(idx)) {
-        if (frontier_flag[toAddress(cur)] == 0 && isSurfaceFrontiers(idx)) {
-            // ROS_INFO("\n******************** expand frontier ********************\n");
+        if (frontier_flag[toAddress(cur)] == 0 && isSpatialFrontiers(idx)) {
             expandFrontier(cur, new_bmin, new_bmax);
         }
     }
-    splitLargeFrontiers(tmp_frontiers);
+    splitLargeFrontiers(tmp_spatial_frontiers, false);
+    splitLargeFrontiers(tmp_surface_frontiers, true);
 }
 
 void frontier_class::expandFrontier(const Eigen::Vector3i& first,
@@ -82,11 +93,11 @@ void frontier_class::expandFrontier(const Eigen::Vector3i& first,
 
     // Data for clustering
     std::queue<Eigen::Vector3i> cell_queue;
-    std::vector<Eigen::Vector3d> expanded;
+    std::vector<Eigen::Vector3d> spatial_expanded, surface_expanded;
     Eigen::Vector3d pos;
 
     indexToPos(first, pos);
-    expanded.push_back(pos);
+    spatial_expanded.push_back(pos);
     cell_queue.push(first);
     frontier_flag[toAddress(first)] = 1;
 
@@ -98,40 +109,62 @@ void frontier_class::expandFrontier(const Eigen::Vector3i& first,
         for (auto nbr : nbrs) {
             // Qualified cell should be inside bounding box and frontier cell not clustered
             int adr = toAddress(nbr);
-            // if (frontier_flag[adr] == 1  || !isSpatialFrontiers(nbr))
-            if (frontier_flag[adr] == 1  || !isSurfaceFrontiers(nbr))
+            if (frontier_flag[adr] == 1  || !isSpatialFrontiers(nbr))
                 continue;
 
             indexToPos(nbr, pos);
             if (pos[2] < 0.4) continue;  // Remove noise close to ground
-            expanded.push_back(pos);
+
+            if (isSurfaceFrontiers(nbr))    {
+                surface_expanded.push_back(pos);
+            }
+            else
+                spatial_expanded.push_back(pos);
+            
             cell_queue.push(nbr);
             frontier_flag[adr] = 1;
         }
     }
-    if (expanded.size() > p_cluster_min) {
+    if (spatial_expanded.size() > p_spatial_cluster_min) {
         // Compute detailed info
         Frontier frontier;
-        frontier.cells_ = expanded;
+        frontier.cells_ = spatial_expanded;
         computeFrontierInfo(frontier);
-        tmp_frontiers.push_back(frontier);
+        tmp_spatial_frontiers.push_back(frontier);
+    }
+    if (surface_expanded.size() > p_surface_cluster_min)   {
+        Frontier frontier;
+        frontier.cells_ = surface_expanded;
+        computeFrontierInfo(frontier);
+        tmp_surface_frontiers.push_back(frontier);
     }
 }
 
-void frontier_class::splitLargeFrontiers(list<Frontier>& ftrs) {
-  list<Frontier> splits, tmps;
+void frontier_class::splitLargeFrontiers(list<Frontier>& ftrs, bool isSurface) {
+  std::list<Frontier> splits, tmps;
   for (auto it = ftrs.begin(); it != ftrs.end(); ++it) {
     // Check if each frontier needs to be split horizontally
-    if (splitHorizontally(*it, splits)) {
-        tmps.insert(tmps.end(), splits.begin(), splits.end());
-        splits.clear();
-    } else
-        tmps.push_back(*it);
+    if (isSurface)  {
+        if (splitYZ(*it, splits)) {
+            tmps.insert(tmps.end(), splits.begin(), splits.end());
+            splits.clear();
+        }
+        else
+            tmps.push_back(*it);
+    }
+    else{
+        if (splitXY(*it, splits)) {
+            tmps.insert(tmps.end(), splits.begin(), splits.end());
+            splits.clear();
+        } 
+        else
+            tmps.push_back(*it);
+    }
   }
   ftrs = tmps;
 }
 
-bool frontier_class::splitHorizontally(const Frontier& frontier, list<Frontier>& splits) {
+bool frontier_class::splitXY(const Frontier& frontier, list<Frontier>& splits) {
     // Split a frontier into small piece if it is too large
     auto mean = frontier.average_.head<2>();    //x, y
     bool need_split = false;
@@ -182,13 +215,78 @@ bool frontier_class::splitHorizontally(const Frontier& frontier, list<Frontier>&
 
     // Recursive call to split frontier that is still too large
     list<Frontier> splits2;
-    if (splitHorizontally(ftr1, splits2)) {
+    if (splitXY(ftr1, splits2)) {
         splits.insert(splits.end(), splits2.begin(), splits2.end());
         splits2.clear();
     } else
         splits.push_back(ftr1);
 
-    if (splitHorizontally(ftr2, splits2))
+    if (splitXY(ftr2, splits2))
+        splits.insert(splits.end(), splits2.begin(), splits2.end());
+    else
+        splits.push_back(ftr2);
+
+    return true;
+}
+
+bool frontier_class::splitYZ(const Frontier& frontier, list<Frontier>& splits) {
+    // Split a frontier into small piece if it is too large
+    auto mean = frontier.average_.tail<2>();    //y, z
+    bool need_split = false;
+    for (auto cell : frontier.filtered_cells_) {
+        if ((cell.tail<2>() - mean).norm() > p_cluster_size_xy) {
+            need_split = true;
+            break;
+        }
+    }
+    if (!need_split) return false;
+
+    // Compute principal component
+    // Covariance matrix of cells
+    Eigen::Matrix2d cov;
+    cov.setZero();
+    for (auto cell : frontier.filtered_cells_) {
+        Eigen::Vector2d diff = cell.tail<2>() - mean;
+        cov += diff * diff.transpose();
+    }
+    cov /= double(frontier.filtered_cells_.size());
+
+    // Find eigenvector corresponds to maximal eigenvector
+    Eigen::EigenSolver<Eigen::Matrix2d> es(cov);
+    auto values = es.eigenvalues().real();
+    auto vectors = es.eigenvectors().real();
+    int max_idx;
+    double max_eigenvalue = -1000000;
+    for (int i = 0; i < values.rows(); ++i) {
+        if (values[i] > max_eigenvalue) {
+            max_idx = i;
+            max_eigenvalue = values[i];
+        }
+    }
+    Eigen::Vector2d first_pc = vectors.col(max_idx);
+    std::cout << "max idx: " << max_idx << std::endl;
+    std::cout << "mean: " << mean.transpose() << ", first pc: " << first_pc.transpose() << std::endl;
+
+    // Split the frontier into two groups along the first PC
+    Frontier ftr1, ftr2;
+    for (auto cell : frontier.cells_) {
+        if ((cell.tail<2>() - mean).dot(first_pc) >= 0)
+            ftr1.cells_.push_back(cell);
+        else
+            ftr2.cells_.push_back(cell);
+    }
+    computeFrontierInfo(ftr1);
+    computeFrontierInfo(ftr2);
+
+    // Recursive call to split frontier that is still too large
+    list<Frontier> splits2;
+    if (splitYZ(ftr1, splits2)) {
+        splits.insert(splits.end(), splits2.begin(), splits2.end());
+        splits2.clear();
+    } else
+        splits.push_back(ftr1);
+
+    if (splitYZ(ftr2, splits2))
         splits.insert(splits.end(), splits2.begin(), splits2.end());
     else
         splits.push_back(ftr2);
@@ -200,8 +298,8 @@ bool frontier_class::isFrontierChanged(const Frontier& ft) {
   for (auto cell : ft.cells_) {
         Eigen::Vector3i idx;
         posToIndex(cell, idx);
-        // if (!isSpatialFrontiers(idx)) return true;
-        if (!isSurfaceFrontiers(idx)) return true;
+        if (!isSpatialFrontiers(idx)) return true;
+        // if (!isSurfaceFrontiers(idx)) return true;
   }
   return false;
 }
@@ -244,35 +342,28 @@ void frontier_class::downsample(
 }
 
 void frontier_class::computeFrontiersToVisit() {
-    first_new_ftr = frontiers.end();
-    int new_num = 0;
+    
     // Try find viewpoints for each cluster and categorize them according to viewpoint number
-    for (auto& tmp_ftr : tmp_frontiers) {
-        // Search viewpoints around frontier
-        // sampleViewpoints(tmp_ftr);
-        // if (!tmp_ftr.viewpoints_.empty()) {
-        //     ++new_num;
-        //     list<Frontier>::iterator inserted = frontiers_.insert(frontiers_.end(), tmp_ftr);
-        //     // Sort the viewpoints by coverage fraction, best view in front
-        //     sort(
-        //         inserted->viewpoints_.begin(), inserted->viewpoints_.end(),
-        //         [](const Viewpoint& v1, const Viewpoint& v2) { return v1.visib_num_ > v2.visib_num_; });
-        //     if (first_new_ftr_ == frontiers_.end()) first_new_ftr_ = inserted;
-        //     } else {
-        //     // Find no viewpoint, move cluster to dormant list
-        //     dormant_frontiers_.push_back(tmp_ftr);
-        //     ++new_dormant_num;
-        // }
-        frontiers.insert(frontiers.end(), tmp_ftr);
+    for (auto& tmp_ftr : tmp_spatial_frontiers) {
+        spatial_frontiers.insert(spatial_frontiers.end(), tmp_ftr);
+    }
+    for (auto& tmp_ftr : tmp_surface_frontiers) {
+        surface_frontiers.insert(surface_frontiers.end(), tmp_ftr);
     }
     // Reset indices of frontiers
     int idx = 0;
-    for (auto& ft : frontiers) {
+    std::cout << "spatial ";
+    for (auto& ft : spatial_frontiers) {
         ft.id_ = idx++;
         std::cout << ft.id_ << ", ";
-        // std::cout << ft.size() << std::endl;
     }
-    std::cout << "to visit: " << frontiers.size() << std::endl;
+    std::cout << std::endl << "surface ";
+    for (auto& ft : surface_frontiers) {
+        ft.id_ = idx++;
+        std::cout << ft.id_ << ", ";
+    }
+    int ss = spatial_frontiers.size() + surface_frontiers.size();
+    std::cout << std::endl << "to visit: " << ss << std::endl;
 }
 
 /////////////////////////
@@ -387,7 +478,8 @@ bool frontier_class::isSpatialFrontiers(const Eigen::Vector3i& id)  {
 }
 
 bool frontier_class::isSurfaceFrontiers(const Eigen::Vector3i& id)  {
-    return (knownOccupied(id) && isNeighborUnknown(id, 1));
+    // return (knownOccupied(id) && isNeighborUnknown(id, 1));
+    return isNeighborOccupied(id);
 }
 
 void frontier_class::getVisibleBox(Eigen::Vector3d& bmin, Eigen::Vector3d& bmax,

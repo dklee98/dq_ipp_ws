@@ -12,10 +12,9 @@ planner_ros_class::planner_ros_class(const ros::NodeHandle& nh,
     sub_pose = nh_.subscribe("odometry", 1, &planner_ros_class::cb_pose, this);
     pub_target = nh_.advertise<trajectory_msgs::MultiDOFJointTrajectory>("command/trajectory", 10);
     v_pub_visible_voxels = nh_.advertise<visualization_msgs::MarkerArray>("visualization/visible_voxels", 1);
-    // v_pub_surface_frontiers = nh_.advertise<visualization_msgs::MarkerArray>("visualization/surface_frontiers", 1);
-    // v_pub_spatial_frontiers = nh_.advertise<visualization_msgs::MarkerArray>("visualization/spatial_frontiers", 1);
 
-    v_ftrs_clusters = nh_.advertise<visualization_msgs::MarkerArray>("visualization/clustered_frontiers", 1);
+    v_pub_ftrs_spatial = nh_.advertise<visualization_msgs::MarkerArray>("visualization/spatial_frontiers", 1);
+    v_pub_ftrs_surface = nh_.advertise<visualization_msgs::MarkerArray>("visualization/surface_frontiers", 1);
 
     timer_frontier = nh_.createTimer(ros::Duration(0.5), &planner_ros_class::cb_timer_frontier, this);
 
@@ -118,10 +117,13 @@ void planner_ros_class::v_voxels(std::vector<Eigen::Vector3d> voxels) {
     v_pub_visible_voxels.publish(arr_marker);
 }
 
-void planner_ros_class::v_frontiers() {
+void planner_ros_class::v_frontiers(bool isSurface) {
     visualization_msgs::MarkerArray arr_marker;
-    int sampler = 50;
-    for (auto& ftr : ft_->frontiers) {
+    std::list<Frontier> frontiers;
+    if (isSurface)  frontiers = ft_->surface_frontiers;
+    else  frontiers = ft_->spatial_frontiers;
+
+    for (auto& ftr : frontiers) {
         visualization_msgs::Marker marker;
         marker.header.frame_id = "world";
         marker.header.stamp = ros::Time::now();
@@ -130,14 +132,14 @@ void planner_ros_class::v_frontiers() {
         marker.action = visualization_msgs::Marker::ADD;
         marker.scale.x = marker.scale.y = marker.scale.z = c_voxel_size;
         marker.pose.orientation.w = 1.0;
-        for (auto& cell : ftr.cells_)  {
+        for (auto& cell : ftr.cells_)  {    // ftr.filtered_cells_
             geometry_msgs::Point cube_center;
             cube_center.x = cell[0];
             cube_center.y = cell[1];
             cube_center.z = cell[2];
             marker.points.push_back(cube_center);
             std_msgs::ColorRGBA color_msg;
-            srand(ftr.id_);
+            srand(ftr.id_ * 123);
             if (ftr.id_ % 3 == 0)
                 color_msg.r = 0 + (float)(rand()) / ((float)(RAND_MAX/(1-0)));
             else if (ftr.id_ % 3 == 1)
@@ -161,7 +163,8 @@ void planner_ros_class::v_frontiers() {
 
         arr_marker.markers.push_back(marker);
     }
-    v_ftrs_clusters.publish(arr_marker);
+    if (isSurface) v_pub_ftrs_surface.publish(arr_marker);
+    else v_pub_ftrs_spatial.publish(arr_marker);
 }
 
 

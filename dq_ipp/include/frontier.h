@@ -60,8 +60,10 @@ public:
 
   void searchFrontiers(std::vector<Eigen::Vector3d> new_voxels);
   void expandFrontier(const Eigen::Vector3i& first, Eigen::Vector3d& bbmin, Eigen::Vector3d& bbmax);
-  void splitLargeFrontiers(list<Frontier>& ftrs);
-  bool splitHorizontally(const Frontier& frontier, list<Frontier>& splits);
+  void getSurfaceFrontier();
+  void splitLargeFrontiers(list<Frontier>& ftrs, bool isSurface);
+  bool splitXY(const Frontier& frontier, list<Frontier>& splits);
+  bool splitYZ(const Frontier& frontier, list<Frontier>& splits);
   bool isFrontierChanged(const Frontier& ft);
   void computeFrontierInfo(Frontier& frontier);
   void downsample(const vector<Vector3d>& cluster_in, vector<Vector3d>& cluster_out);
@@ -88,8 +90,9 @@ public:
   void getVisibleBox(Eigen::Vector3d& bmin, Eigen::Vector3d& bmax,
                        std::vector<Eigen::Vector3d> new_voxels);
 
-    
-  std::list<Frontier> frontiers, tmp_frontiers;
+  // frontiers
+  std::list<Frontier> tmp_spatial_frontiers, tmp_surface_frontiers;
+  std::list<Frontier> spatial_frontiers, surface_frontiers;
 
 private:
   voxblox_class& map_;
@@ -97,9 +100,9 @@ private:
   
   
   // params
-  int p_cluster_min;
+  int p_spatial_cluster_min, p_surface_cluster_min;
   int p_down_sample;
-  double p_cluster_size_xy, p_cluster_size_z;
+  double p_cluster_size_xy;
 
   // constants
   double c_voxel_size, c_voxel_size_inv;
@@ -109,7 +112,6 @@ private:
   // Data
   std::vector<char> frontier_flag;
   std::vector<int> removed_ids;
-  std::list<Frontier>::iterator first_new_ftr;
 };
 
 

@@ -44,9 +44,8 @@ protected:
     ros::Subscriber sub_pose;
     ros::Publisher pub_target;
     ros::Publisher v_pub_visible_voxels;
-    // ros::Publisher v_pub_surface_frontiers;
-    // ros::Publisher v_pub_spatial_frontiers;
-    ros::Publisher v_ftrs_clusters;
+    ros::Publisher v_pub_ftrs_spatial;
+    ros::Publisher v_pub_ftrs_surface;
     ros::ServiceServer srv_run_planner;
 
     ros::Timer timer_frontier;
@@ -55,7 +54,7 @@ protected:
     ros::Time ros_timer;
 
     void v_voxels(std::vector<Eigen::Vector3d> voxels) override;
-    void v_frontiers() override;
+    void v_frontiers(bool isSurface) override;
 
 };
 
