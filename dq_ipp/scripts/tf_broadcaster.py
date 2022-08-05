@@ -32,9 +32,9 @@ class caster():
                 (msg.pose.orientation.x,msg.pose.orientation.y,msg.pose.orientation.z,msg.pose.orientation.w),\
                 self.header,"base_link","map")
         # T camera to base
-        self.br.sendTransform((0.1, 0.0, 0.05), (0.5,-0.5,0.5,-0.5), self.header, self.camera_link_name, "base_link")
+        self.br.sendTransform((0.1, 0.0, 0.25), (0.5,-0.5,0.5,-0.5), self.header, self.camera_link_name, "base_link")
         # T map to world
-        self.br.sendTransform((0.0, 0.0, 0.5), (0.0,0.0,0.0,1.0), self.header, "map", "world")
+        self.br.sendTransform((0.0, 0.0, 0.01), (0.0,0.0,0.0,1.0), self.header, "map", "world")
         return
 
 if __name__ == '__main__':
