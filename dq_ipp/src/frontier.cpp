@@ -19,6 +19,16 @@ void frontier_class::get_param(const ros::NodeHandle& nh)    {
     nh.param("p_spatial_cluster_min", p_spatial_cluster_min, 50);
     nh.param("p_surface_cluster_min", p_surface_cluster_min, 30);
     nh.param("p_cluster_size_xy", p_cluster_size_xy, 2.0);
+    nh.param("p_vp_min_visible_num", p_vp_min_visible_num, 15);
+    
+
+    nh.param("p_vp_rmax", p_vp_rmax, 2.5);
+    nh.param("p_vp_rmin", p_vp_rmin, 1.5);
+    nh.param("p_vp_rnum", p_vp_rnum, 3);
+    double dphi = 15 * M_PI / 180.0;
+    nh.param("p_vp_dphi", p_vp_dphi, dphi);
+    nh.param("p_vp_min_dist", p_vp_min_dist, 0.75);
+    nh.param("p_vp_clearance", p_vp_clearance, 0.21);
     
     c_voxel_size = map_.getVoxelSize();
     c_voxel_size_inv = 1 / c_voxel_size;
@@ -49,7 +59,7 @@ void frontier_class::searchFrontiers(std::vector<Eigen::Vector3d> new_voxels) {
         iter = ftrs.erase(iter);
     };
 
-    std::cout << "Before remove: " << spatial_frontiers.size() << std::endl;
+    std::cout << "Before remove: " << spatial_frontiers.size() + surface_frontiers.size() << std::endl;
     
     removed_ids.clear();
     int rmv_idx = 0;
@@ -64,7 +74,6 @@ void frontier_class::searchFrontiers(std::vector<Eigen::Vector3d> new_voxels) {
         }
     }
     for (auto iter = surface_frontiers.begin(); iter != surface_frontiers.end();)   {
-        // is need overlap function?????????
         if (haveOverlap(iter->box_min_, iter->box_max_, new_bmin, new_bmax) && 
                 isFrontierChanged(*iter))   {
             resetFlag(iter, surface_frontiers);
@@ -74,7 +83,7 @@ void frontier_class::searchFrontiers(std::vector<Eigen::Vector3d> new_voxels) {
             ++iter;
         }
     }
-    std::cout << "After remove: " << spatial_frontiers.size() << std::endl;
+    std::cout << "After remove: " << spatial_frontiers.size() + surface_frontiers.size() << std::endl;
 
     Eigen::Vector3i idx;
     for (int i = 0; i < new_voxels.size(); ++i) {
@@ -342,13 +351,34 @@ void frontier_class::downsample(
 }
 
 void frontier_class::computeFrontiersToVisit() {
-    
+    first_spatial_ftr = spatial_frontiers.end();
+    first_surface_ftr = surface_frontiers.end();
     // Try find viewpoints for each cluster and categorize them according to viewpoint number
     for (auto& tmp_ftr : tmp_spatial_frontiers) {
-        spatial_frontiers.insert(spatial_frontiers.end(), tmp_ftr);
+        // Search viewpoints around frontier
+        sampleViewpoints(tmp_ftr);
+        if (!tmp_ftr.viewpoints_.empty()) {
+            list<Frontier>::iterator inserted = spatial_frontiers.insert(spatial_frontiers.end(), tmp_ftr);
+            // Sort the viewpoints by coverage fraction, best view in front
+            sort(
+                inserted->viewpoints_.begin(), inserted->viewpoints_.end(),
+                [](const Viewpoint& v1, const Viewpoint& v2) { return v1.visib_num_ > v2.visib_num_; });
+            if (first_spatial_ftr == spatial_frontiers.end()) first_spatial_ftr = inserted;
+        }
+        // spatial_frontiers.insert(spatial_frontiers.end(), tmp_ftr);
     }
     for (auto& tmp_ftr : tmp_surface_frontiers) {
-        surface_frontiers.insert(surface_frontiers.end(), tmp_ftr);
+        // Search viewpoints around frontier
+        sampleViewpoints(tmp_ftr);
+        if (!tmp_ftr.viewpoints_.empty()) {
+            list<Frontier>::iterator inserted = surface_frontiers.insert(surface_frontiers.end(), tmp_ftr);
+            // Sort the viewpoints by coverage fraction, best view in front
+            sort(
+                inserted->viewpoints_.begin(), inserted->viewpoints_.end(),
+                [](const Viewpoint& v1, const Viewpoint& v2) { return v1.visib_num_ > v2.visib_num_; });
+            if (first_surface_ftr == surface_frontiers.end()) first_surface_ftr = inserted;
+        }
+        // surface_frontiers.insert(surface_frontiers.end(), tmp_ftr);
     }
     // Reset indices of frontiers
     int idx = 0;
@@ -364,6 +394,56 @@ void frontier_class::computeFrontiersToVisit() {
     }
     int ss = spatial_frontiers.size() + surface_frontiers.size();
     std::cout << std::endl << "to visit: " << ss << std::endl;
+}
+
+// Sample viewpoints around frontier's average position, check coverage to the frontier cells
+void frontier_class::sampleViewpoints(Frontier& frontier) {
+    // Evaluate sample viewpoints on circles, find ones that cover most cells
+    for (double rc = p_vp_rmin, dr = (p_vp_rmax - p_vp_rmin) / p_vp_rnum;
+            rc <= p_vp_rmax + 1e-3; rc += dr)   {
+        for (double phi = -M_PI; phi < M_PI; phi += p_vp_dphi) {
+            const Eigen::Vector3d sample_pos = frontier.average_ + rc * Eigen::Vector3d(cos(phi), sin(phi), 0);
+
+            // Qualified viewpoint is in bounding box and in safe region
+            
+            if (!map_.isObserved(sample_pos) || map_.getVoxelState(sample_pos) != voxblox_class::FREE)
+                continue;
+
+            // Compute average yaw
+            auto& cells = frontier.filtered_cells_;
+            Eigen::Vector3d ref_dir = (cells.front() - sample_pos).normalized();
+            double avg_yaw = 0.0;
+            for (int i = 1; i < cells.size(); ++i) {
+                Eigen::Vector3d dir = (cells[i] - sample_pos).normalized();
+                double yaw = acos(dir.dot(ref_dir));
+                if (ref_dir.cross(dir)[2] < 0) yaw = -yaw;
+                avg_yaw += yaw;
+            }
+            avg_yaw = avg_yaw / cells.size() + atan2(ref_dir[1], ref_dir[0]);
+            yawSaturation(avg_yaw);
+            // Compute the fraction of covered and visible cells
+            Eigen::Quaterniond sample_ori;
+            int visib_num = 0;
+            yaw2orientation(avg_yaw, sample_ori);
+            ray_.countVisibleFrontiers(visib_num, sample_pos, sample_ori, cells);
+            std::cout << visib_num << std::endl;
+            
+            // // int visib_num = countVisibleCells(sample_pos, avg_yaw, cells);
+            if (visib_num > p_vp_min_visible_num) {
+                Viewpoint vp = { sample_pos, avg_yaw, visib_num };
+                frontier.viewpoints_.push_back(vp);
+            }
+        }
+    }
+}
+
+void frontier_class::yaw2orientation(double yaw, Eigen::Quaterniond& orientation)   {
+    double roll = 0, pitch = 0;
+    Eigen::Quaterniond q;
+    q = Eigen::AngleAxisd(roll, Eigen::Vector3d::UnitX())
+        * Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY())
+        * Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ());
+    orientation = q;
 }
 
 /////////////////////////

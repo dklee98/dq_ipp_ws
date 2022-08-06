@@ -67,9 +67,11 @@ public:
   bool isFrontierChanged(const Frontier& ft);
   void computeFrontierInfo(Frontier& frontier);
   void downsample(const vector<Vector3d>& cluster_in, vector<Vector3d>& cluster_out);
-
+  
   void computeFrontiersToVisit();
+  void sampleViewpoints(Frontier& frontier);
 
+  void yaw2orientation(double yaw, Eigen::Quaterniond& orientation);
   //////////////
   void posToIndex(const Eigen::Vector3d& pos, Eigen::Vector3i& id);
   void indexToPos(const Eigen::Vector3i& id, Eigen::Vector3d& pos);
@@ -103,6 +105,8 @@ private:
   int p_spatial_cluster_min, p_surface_cluster_min;
   int p_down_sample;
   double p_cluster_size_xy;
+  double p_vp_rmax, p_vp_rmin, p_vp_dphi, p_vp_min_dist, p_vp_clearance;
+  int p_vp_rnum, p_vp_min_visible_num;
 
   // constants
   double c_voxel_size, c_voxel_size_inv;
@@ -112,6 +116,7 @@ private:
   // Data
   std::vector<char> frontier_flag;
   std::vector<int> removed_ids;
+  std::list<Frontier>::iterator first_spatial_ftr, first_surface_ftr;
 };
 
 

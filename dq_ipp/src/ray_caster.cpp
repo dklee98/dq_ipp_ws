@@ -24,10 +24,10 @@ void ray_caster_class::get_param(const ros::NodeHandle& nh)    {
     // Downsample to voxel size resolution at max range
     c_res_x = std::min(
         static_cast<int>(ceil(p_ray_length * c_fov_x /
-                        (map_.getVoxelSize() * p_downsampling_factor))), p_resolution_x);
+                        (p_ray_step * p_downsampling_factor))), p_resolution_x);
     c_res_y = std::min(
         static_cast<int>(ceil(p_ray_length * c_fov_y /
-                        (map_.getVoxelSize() * p_downsampling_factor))), p_resolution_y);
+                        (p_ray_step * p_downsampling_factor))), p_resolution_y);
 
     // Determine number of splits + split distances
     c_n_sections = std::floor(std::log2(
@@ -76,6 +76,72 @@ bool ray_caster_class::getVisibleVoxels(std::vector<Eigen::Vector3d>* result,
 
                     map_.getVoxelCenter(&voxel_center, current_pos);
                     result->push_back(voxel_center);
+
+                    // Check voxel occupied
+                    if (map_.getVoxelState(current_pos) == voxblox_class::OCCUPIED) {
+                        // Occlusion, mark neighboring rays as occluded
+                        markNeighboringRays(i, j, current_segment, -1);
+                        cast_ray = false;
+                        break;
+                    }
+                }
+                if (cast_ray) {
+                    current_segment++;
+                    if (current_segment >= c_n_sections) {
+                        cast_ray = false;  // done
+                    } else {
+                        // update ray starts of neighboring rays
+                        markNeighboringRays(i, j, current_segment - 1, current_segment);
+                    }
+                }
+            }
+        }
+    }
+    return true;
+}
+
+bool ray_caster_class::countVisibleFrontiers(int& result, 
+                                        const Eigen::Vector3d& position, 
+                                        const Eigen::Quaterniond& orientation,
+                                        const vector<Eigen::Vector3d>& cluster) {
+    // Setup ray table (contains at which segment to start, -1 if occluded
+    ray_table = Eigen::ArrayXXi::Zero(c_res_x, c_res_y);
+  
+    // Ray-casting
+    Eigen::Vector3d camera_direction;
+    Eigen::Vector3d direction;
+    Eigen::Vector3d current_pos;
+    Eigen::Vector3d voxel_center;
+    double distance;
+    bool cast_ray;
+    double map_distance;
+    for (int i = 0; i < c_res_x; ++i) {
+        for (int j = 0; j < c_res_y; ++j) {
+            int current_segment = ray_table(i, j);  // get ray starting segment
+            if (current_segment < 0) {
+                continue;  // already occluded ray
+            }
+            getDirectionVector(&camera_direction,
+                static_cast<double>(i) / (static_cast<double>(c_res_x) - 1.0),
+                static_cast<double>(j) / (static_cast<double>(c_res_y) - 1.0));
+            direction = orientation * camera_direction;
+            distance = c_split_distances[current_segment];
+            cast_ray = true;
+            while (cast_ray) {
+                // iterate through all splits (segments)
+                while (distance < c_split_distances[current_segment + 1]) {
+                    current_pos = position + distance * direction;
+                    distance += p_ray_step;
+
+                    map_.getVoxelCenter(&voxel_center, current_pos);
+                    for (auto cell : cluster)   {
+                        if (sqrt(pow(cell[0]-voxel_center[0], 2) + 
+                                pow(cell[1]-voxel_center[1], 2) + 
+                                pow(cell[2]-voxel_center[2], 2)) < p_ray_step)  {
+                            result += 1;
+                        }
+                    }
+                    // result->push_back(voxel_center);
 
                     // Check voxel occupied
                     if (map_.getVoxelState(current_pos) == voxblox_class::OCCUPIED) {

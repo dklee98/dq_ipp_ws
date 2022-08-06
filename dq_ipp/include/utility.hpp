@@ -156,4 +156,12 @@ void depth_img_to_pcl(const cv::Mat &depth_img, const cv::Mat &rgb_img, const do
   }
 }
 
+////// Math ///////////
+void yawSaturation(double& yaw) {
+  while (yaw < -M_PI)
+    yaw += 2 * M_PI;
+  while (yaw > M_PI)
+    yaw -= 2 * M_PI;
+}
+
 #endif

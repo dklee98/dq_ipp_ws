@@ -25,6 +25,10 @@ public:
     bool getVisibleVoxels(std::vector<Eigen::Vector3d>* result, 
                             const Eigen::Vector3d& position, 
                             const Eigen::Quaterniond& orientation);
+    bool countVisibleFrontiers(int& result, 
+                                const Eigen::Vector3d& position, 
+                                const Eigen::Quaterniond& orientation,
+                                const vector<Eigen::Vector3d>& cluster);
 
     void markNeighboringRays(int x, int y, int segment, int value);
     void getDirectionVector(Eigen::Vector3d* result, double relative_x,
