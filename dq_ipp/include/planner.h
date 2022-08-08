@@ -26,17 +26,11 @@ public:
     explicit planner_class(const ros::NodeHandle& nh);
     virtual ~planner_class() = default;
     
-    // const static unsigned char NOT_FRONTIER = 0;
-    // const static unsigned char SURFACE_FRONTIER = 1;
-    // const static unsigned char SPATIAL_FRONTIER = 2;
-    
     void get_param(const ros::NodeHandle& nh);
 
     void test();
 
 protected:
-    // voxblox_class *map_ = new voxblox_class();
-    // ray_caster_class *ray_ = new ray_caster_class(*map_);
     std::unique_ptr<voxblox_class> map_;
     std::unique_ptr<ray_caster_class> ray_;
     std::unique_ptr<frontier_class> ft_;
@@ -45,12 +39,11 @@ protected:
     bool f_planning;    // flag
     Eigen::Vector3d g_current_position; // global
     Eigen::Quaterniond g_current_orientation;
-    Eigen::Vector3d target_position;
-    double target_yaw;
+    // Eigen::Vector3d target_position;
+    // double target_yaw;
 
-    // uncomment after coding update frontier funciton!!!
-    std::vector<Eigen::Vector3d> surface_f;
-    std::vector<Eigen::Vector3d> spatial_f;
+    std::vector<Eigen::Vector3d> best_vp_pos;
+    std::vector<double> best_vp_yaw;
 
     // params
     // double p_checking_distance; // distance in voxelsizes where we check for known voxels
@@ -59,19 +52,8 @@ protected:
     
     // constants
     double c_voxel_size;
-    // Eigen::Vector3d c_neighbor_voxels[26];
-    
-    // void get_frontiers(std::vector<Eigen::Vector3d>* surface_result,
-    //                             std::vector<Eigen::Vector3d>* spatial_result,
-    //                             std::vector<Eigen::Vector3d> voxels);
-    // void update_frontiers(std::vector<Eigen::Vector3d>* surface_result,
-    //                             std::vector<Eigen::Vector3d>* spatial_result);
-    // int isFrontierVoxel(const Eigen::Vector3d& voxel);
 
     // Visualization
-    // const static unsigned char V_visible_voxels = 0;
-    // const static unsigned char V_surface_frontiers = 1;
-    // const static unsigned char V_spatial_frontiers = 2;
     virtual void v_voxels(std::vector<Eigen::Vector3d> voxels) = 0;
     virtual void v_frontiers(bool isSurface) = 0;
 

@@ -26,7 +26,7 @@ public:
     virtual ~planner_ros_class() = default;
 
     // void get_param();
-
+    void pub_command_point();
     // ros callbacks
     void cb_pose(const geometry_msgs::PoseStamped& msg);
     bool cb_srv_run_planner(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res);

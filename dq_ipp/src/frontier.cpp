@@ -19,6 +19,7 @@ void frontier_class::get_param(const ros::NodeHandle& nh)    {
     nh.param("p_spatial_cluster_min", p_spatial_cluster_min, 50);
     nh.param("p_surface_cluster_min", p_surface_cluster_min, 30);
     nh.param("p_cluster_size_xy", p_cluster_size_xy, 2.0);
+    nh.param("p_cluster_size_yz", p_cluster_size_yz, 2.0);
     nh.param("p_vp_min_visible_num", p_vp_min_visible_num, 15);
     
 
@@ -27,7 +28,7 @@ void frontier_class::get_param(const ros::NodeHandle& nh)    {
     nh.param("p_vp_rnum", p_vp_rnum, 3);
     double dphi = 15 * M_PI / 180.0;
     nh.param("p_vp_dphi", p_vp_dphi, dphi);
-    nh.param("p_vp_min_dist", p_vp_min_dist, 0.75);
+    nh.param("p_vp_min_dist", p_vp_min_dist, 0.3);
     nh.param("p_vp_clearance", p_vp_clearance, 0.21);
     
     c_voxel_size = map_.getVoxelSize();
@@ -243,7 +244,7 @@ bool frontier_class::splitYZ(const Frontier& frontier, list<Frontier>& splits) {
     auto mean = frontier.average_.tail<2>();    //y, z
     bool need_split = false;
     for (auto cell : frontier.filtered_cells_) {
-        if ((cell.tail<2>() - mean).norm() > p_cluster_size_xy) {
+        if ((cell.tail<2>() - mean).norm() > p_cluster_size_yz) {
             need_split = true;
             break;
         }
@@ -406,7 +407,9 @@ void frontier_class::sampleViewpoints(Frontier& frontier) {
 
             // Qualified viewpoint is in bounding box and in safe region
             
-            if (!map_.isObserved(sample_pos) || map_.getVoxelState(sample_pos) != voxblox_class::FREE)
+            if (!map_.isObserved(sample_pos) || 
+                    map_.getVoxelState(sample_pos) != voxblox_class::FREE ||
+                    isNearNotFREE(sample_pos))
                 continue;
 
             // Compute average yaw
@@ -426,7 +429,6 @@ void frontier_class::sampleViewpoints(Frontier& frontier) {
             int visib_num = 0;
             yaw2orientation(avg_yaw, sample_ori);
             ray_.countVisibleFrontiers(visib_num, sample_pos, sample_ori, cells);
-            std::cout << visib_num << std::endl;
             
             // // int visib_num = countVisibleCells(sample_pos, avg_yaw, cells);
             if (visib_num > p_vp_min_visible_num) {
@@ -437,6 +439,50 @@ void frontier_class::sampleViewpoints(Frontier& frontier) {
     }
 }
 
+void frontier_class::getTopViewpointsInfo(const Eigen::Vector3d& cur_pos, std::vector<Eigen::Vector3d>& points,
+                                        std::vector<double>& yaws) {
+    points.clear();
+    yaws.clear();
+    for (auto frontier : surface_frontiers) {
+        bool no_view = true;
+        for (auto view : frontier.viewpoints_) {
+            // Retrieve the first viewpoint that is far enough and has highest coverage
+            if ((view.pos_ - cur_pos).norm() < p_vp_min_dist) continue;
+            points.push_back(view.pos_);
+            yaws.push_back(view.yaw_);
+            no_view = false;
+            break;
+        }
+        if (no_view) {
+            // All viewpoints are very close, just use the first one (with highest coverage).
+            auto view = frontier.viewpoints_.front();
+            points.push_back(view.pos_);
+            yaws.push_back(view.yaw_);
+        }
+    }
+    if (surface_frontiers.size() == 0)  {
+        for (auto frontier : spatial_frontiers) {
+            bool no_view = true;
+            for (auto view : frontier.viewpoints_) {
+                // Retrieve the first viewpoint that is far enough and has highest coverage
+                if ((view.pos_ - cur_pos).norm() < p_vp_min_dist) continue;
+                points.push_back(view.pos_);
+                yaws.push_back(view.yaw_);
+                no_view = false;
+                break;
+            }
+            if (no_view) {
+                // All viewpoints are very close, just use the first one (with highest coverage).
+                auto view = frontier.viewpoints_.front();
+                points.push_back(view.pos_);
+                yaws.push_back(view.yaw_);
+            }
+        }
+    }
+}
+
+/////////////////////////
+
 void frontier_class::yaw2orientation(double yaw, Eigen::Quaterniond& orientation)   {
     double roll = 0, pitch = 0;
     Eigen::Quaterniond q;
@@ -445,8 +491,6 @@ void frontier_class::yaw2orientation(double yaw, Eigen::Quaterniond& orientation
         * Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ());
     orientation = q;
 }
-
-/////////////////////////
 
 void frontier_class::posToIndex(const Eigen::Vector3d& pos, Eigen::Vector3i& id) {
     for (int i = 0; i < 3; ++i)
@@ -502,6 +546,18 @@ bool frontier_class::isNeighborOccupied(const Eigen::Vector3i& voxel) {
         indexToPos(nbr, pos);
         if (map_.getVoxelState(pos) == voxblox_class::OCCUPIED) return true;
     }
+    return false;
+}
+
+bool frontier_class::isNearNotFREE(const Eigen::Vector3d& pos) {
+    const int vox_num = floor(p_vp_clearance / c_voxel_size);
+    for (int x = -vox_num; x <= vox_num; ++x)
+        for (int y = -vox_num; y <= vox_num; ++y)
+            for (int z = -1; z <= 1; ++z) {
+                Eigen::Vector3d vox;
+                vox << pos[0] + x * c_voxel_size, pos[1] + y * c_voxel_size, pos[2] + z * c_voxel_size;
+                if (map_.getVoxelState(vox) != voxblox_class::FREE) return true;
+            }
     return false;
 }
 

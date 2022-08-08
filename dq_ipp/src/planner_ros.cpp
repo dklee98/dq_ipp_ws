@@ -10,7 +10,8 @@ planner_ros_class::planner_ros_class(const ros::NodeHandle& nh,
     // get_param();
 
     sub_pose = nh_.subscribe("odometry", 1, &planner_ros_class::cb_pose, this);
-    pub_target = nh_.advertise<trajectory_msgs::MultiDOFJointTrajectory>("command/trajectory", 10);
+    // pub_target = nh_.advertise<trajectory_msgs::MultiDOFJointTrajectory>("command/trajectory", 10);
+    pub_target = nh_.advertise<geometry_msgs::PoseStamped>("command/trajectory", 10);
     v_pub_visible_voxels = nh_.advertise<visualization_msgs::MarkerArray>("visualization/visible_voxels", 1);
 
     v_pub_ftrs_spatial = nh_.advertise<visualization_msgs::MarkerArray>("visualization/spatial_frontiers", 1);
@@ -65,6 +66,24 @@ void planner_ros_class::cb_timer_frontier(const ros::TimerEvent& e)    {
         return;
     }
     test();
+    pub_command_point();
+}
+
+void planner_ros_class::pub_command_point() {
+    geometry_msgs::PoseStamped output;
+    output.header.frame_id = "world";
+    output.header.stamp = ros::Time::now();
+    output.pose.position.x = best_vp_pos[0][0];
+    output.pose.position.y = best_vp_pos[0][1];
+    output.pose.position.z = best_vp_pos[0][2];
+    Eigen::Quaterniond q;
+    ft_->yaw2orientation(best_vp_yaw[0], q);
+    output.pose.orientation.x = q.x();
+    output.pose.orientation.y = q.y();
+    output.pose.orientation.z = q.z();
+    output.pose.orientation.w = q.w();
+    pub_target.publish(output);
+
 }
 
 void planner_ros_class::v_voxels(std::vector<Eigen::Vector3d> voxels) {
@@ -128,11 +147,11 @@ void planner_ros_class::v_frontiers(bool isSurface) {
         marker.header.frame_id = "world";
         marker.header.stamp = ros::Time::now();
         marker.type = visualization_msgs::Marker::CUBE_LIST;
-        marker.id = ftr.id_;
+        marker.id = ftr.id_ + 1;
         marker.action = visualization_msgs::Marker::ADD;
         marker.scale.x = marker.scale.y = marker.scale.z = c_voxel_size;
         marker.pose.orientation.w = 1.0;
-        for (auto& cell : ftr.cells_)  {    // ftr.filtered_cells_
+        for (auto& cell : ftr.filtered_cells_)  {    // ftr.filtered_cells_ or ftr.cells_
             geometry_msgs::Point cube_center;
             cube_center.x = cell[0];
             cube_center.y = cell[1];
@@ -146,9 +165,10 @@ void planner_ros_class::v_frontiers(bool isSurface) {
                 color_msg.g = 0 + (float)(rand()) / ((float)(RAND_MAX/(1-0)));
             else if (ftr.id_ % 3 == 2)
                 color_msg.b = 0 + (float)(rand()) / ((float)(RAND_MAX/(1-0)));
-            color_msg.a = 0.5;
+            color_msg.a = 0.3;
             marker.colors.push_back(color_msg);
         }
+        // Visualize average point of cluster
         geometry_msgs::Point cube_avg;
         cube_avg.x = ftr.average_[0];
         cube_avg.y = ftr.average_[1];
@@ -160,12 +180,43 @@ void planner_ros_class::v_frontiers(bool isSurface) {
         color_msg.b = 1.0;
         color_msg.a = 1.0;
         marker.colors.push_back(color_msg);
-
         arr_marker.markers.push_back(marker);
+
+        // Visualize strong viewpoint of cluster
+        visualization_msgs::Marker vp_marker, vp_txt_1, vp_txt_2;
+        vp_marker.header.frame_id = vp_txt_1.header.frame_id = vp_txt_2.header.frame_id = "world";
+        vp_marker.header.stamp = vp_txt_1.header.stamp = vp_txt_2.header.stamp = ros::Time::now();
+        vp_marker.type = visualization_msgs::Marker::ARROW; 
+        vp_txt_1.type = vp_txt_2.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+        vp_marker.id = -(ftr.id_ + 1); 
+        vp_txt_1.id = (ftr.id_ + 1) * 1000;
+        vp_txt_2.id = -(ftr.id_ + 1) * 1000;
+        vp_marker.action = vp_txt_1.action = vp_txt_2.action = visualization_msgs::Marker::ADD;
+        vp_marker.scale.x = 0.5; 
+        vp_marker.scale.y = 0.1; 
+        vp_marker.scale.z = 0.1; vp_txt_1.scale.z = vp_txt_2.scale.z = 0.5;
+        vp_marker.pose.position.x = vp_txt_1.pose.position.x = ftr.viewpoints_[0].pos_[0];
+        vp_marker.pose.position.y = vp_txt_1.pose.position.y = ftr.viewpoints_[0].pos_[1];
+        vp_marker.pose.position.z = vp_txt_1.pose.position.z = ftr.viewpoints_[0].pos_[2];
+        vp_txt_2.pose.position.x = ftr.average_[0];
+        vp_txt_2.pose.position.y = ftr.average_[1];
+        vp_txt_2.pose.position.z = ftr.average_[2];
+        Eigen::Quaterniond ori;
+        ft_->yaw2orientation(ftr.viewpoints_[0].yaw_, ori);
+        vp_marker.pose.orientation.x = ori.x();
+        vp_marker.pose.orientation.y = ori.y();
+        vp_marker.pose.orientation.z = ori.z();
+        vp_marker.pose.orientation.w = ori.w();
+        vp_txt_1.text = vp_txt_2.text = std::to_string(ftr.id_);
+        vp_marker.color.r = 1.0; vp_txt_1.color.r = vp_txt_2.color.r = 0.0;
+        vp_marker.color.g = 1.0; vp_txt_1.color.g = vp_txt_2.color.g = 0.0;
+        vp_marker.color.b = 1.0; vp_txt_1.color.b = vp_txt_2.color.b = 0.0;
+        vp_marker.color.a = vp_txt_1.color.a = vp_txt_2.color.a = 1.0;
+        arr_marker.markers.push_back(vp_marker);
+        arr_marker.markers.push_back(vp_txt_1);
+        arr_marker.markers.push_back(vp_txt_2);
+
     }
     if (isSurface) v_pub_ftrs_surface.publish(arr_marker);
     else v_pub_ftrs_spatial.publish(arr_marker);
 }
-
-
-

@@ -7,12 +7,12 @@
         <pose frame=''>0 0 0 0 -0 0</pose>
         <mass>1.0</mass>
       </inertial>
+      <!-- real size : 120 * 68 * 60 -->
       <collision name='emart_col'>
         <pose frame=''>0 0 0 0 -0 0</pose>
         <geometry>
           <mesh>
             <scale>0.2 0.2 0.2</scale>
-            <!-- real size : 120 * 68 * 60 -->
             <uri>model://emart/untitled.stl</uri>
           </mesh>
         </geometry>

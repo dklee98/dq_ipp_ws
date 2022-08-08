@@ -29,11 +29,11 @@ void planner_class::test()  {
     // tic();
     ft_->searchFrontiers(new_voxels);
     ft_->computeFrontiersToVisit();
+    ft_->getTopViewpointsInfo(g_current_position, best_vp_pos, best_vp_yaw);
     // toc();
     if (p_verbose)  {
         v_voxels(new_voxels);
-        v_frontiers(false);
-        v_frontiers(true);
+        v_frontiers(false); // spatial frontiers
+        v_frontiers(true);  // surface frontiers
     }
-    
 }

@@ -71,8 +71,11 @@ public:
   void computeFrontiersToVisit();
   void sampleViewpoints(Frontier& frontier);
 
-  void yaw2orientation(double yaw, Eigen::Quaterniond& orientation);
+  void getTopViewpointsInfo(const Eigen::Vector3d& cur_pos, std::vector<Eigen::Vector3d>& points, 
+                            std::vector<double>& yaws);
+
   //////////////
+  void yaw2orientation(double yaw, Eigen::Quaterniond& orientation);
   void posToIndex(const Eigen::Vector3d& pos, Eigen::Vector3i& id);
   void indexToPos(const Eigen::Vector3i& id, Eigen::Vector3d& pos);
   int toAddress(const Eigen::Vector3i& id);
@@ -81,6 +84,7 @@ public:
   bool knownUnknown(const Eigen::Vector3i& idx);
   bool isNeighborUnknown(const Eigen::Vector3i& voxel, int th);
   bool isNeighborOccupied(const Eigen::Vector3i& voxel);
+  bool isNearNotFREE(const Vector3d& pos);
   bool haveOverlap(const Eigen::Vector3d& min1, const Eigen::Vector3d& max1, 
                   const Eigen::Vector3d& min2, const Eigen::Vector3d& max2);
   std::vector<Eigen::Vector3i> sixNeighbors(const Eigen::Vector3i& voxel);
@@ -104,7 +108,7 @@ private:
   // params
   int p_spatial_cluster_min, p_surface_cluster_min;
   int p_down_sample;
-  double p_cluster_size_xy;
+  double p_cluster_size_xy, p_cluster_size_yz;
   double p_vp_rmax, p_vp_rmin, p_vp_dphi, p_vp_min_dist, p_vp_clearance;
   int p_vp_rnum, p_vp_min_visible_num;
 

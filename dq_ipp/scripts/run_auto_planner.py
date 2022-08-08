@@ -25,7 +25,8 @@ class run_auto_planner():
 
         self.sub_uav_state = rospy.Subscriber('/mavros/state', State, self.cb_uav_state)
         self.sub_uav_pose = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.cb_uav_pose)
-        self.sub_command_trajectory = rospy.Subscriber('/command/trajectory', MultiDOFJointTrajectory, self.cb_cmd_traj)
+        # self.sub_command_trajectory = rospy.Subscriber('/command/trajectory', MultiDOFJointTrajectory, self.cb_cmd_traj)
+        self.sub_command_point = rospy.Subscriber('/command/trajectory', PoseStamped, self.cb_cmd_traj)
 
         self.pub_pose = rospy.Publisher('/mavros/setpoint_position/local', PoseStamped, queue_size = 2)
         self.pub_vel = rospy.Publisher('/mavros/setpoint_velocity/cmd_vel', TwistStamped, queue_size=2)
@@ -50,24 +51,26 @@ class run_auto_planner():
 
     def cb_uav_pose(self, msg):
         self.cur_local_pose = msg
-        # if not self.pose_in:
-        #     self.set_pose = msg
-        self.set_pose = msg
+        if not self.pose_in:
+            self.set_pose = msg
+            print("nono")
+        # self.set_pose = msg
         self.pose_in = True
         return
 
 
     def cb_cmd_traj(self, msg):
-        array_size = len(msg.points)
-        if array_size == 0:
-            return
+        self.set_pose = msg
+        # array_size = len(msg.points)
+        # if array_size == 0:
+        #     return
 
-        for i in range(array_size):
-            self.set_pose.header.stamp = rospy.Time.now()
-            self.set_pose.pose.position.x = msg.points[i].transforms[0].translation.x
-            self.set_pose.pose.position.y = msg.points[i].transforms[0].translation.y
-            self.set_pose.pose.position.z = msg.points[i].transforms[0].translation.z
-            self.set_pose.pose.orientation = msg.points[i].transforms[0].rotation
+        # for i in range(array_size):
+        #     self.set_pose.header.stamp = rospy.Time.now()
+        #     self.set_pose.pose.position.x = msg.points[i].transforms[0].translation.x
+        #     self.set_pose.pose.position.y = msg.points[i].transforms[0].translation.y
+        #     self.set_pose.pose.position.z = msg.points[i].transforms[0].translation.z
+        #     self.set_pose.pose.orientation = msg.points[i].transforms[0].rotation
 
         print('--------------------------')
         print('traj in ')
