@@ -53,6 +53,10 @@ protected:
     // Time
     ros::Time ros_timer;
 
+    //visualization
+    int marker_len = 0;
+    std::list<int> id_list;
+
     void v_voxels(std::vector<Eigen::Vector3d> voxels) override;
     void v_frontiers(bool isSurface) override;
 

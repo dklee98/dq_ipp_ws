@@ -164,4 +164,12 @@ void yawSaturation(double& yaw) {
     yaw -= 2 * M_PI;
 }
 
+double angleDifference(double angle1, double angle2)  {
+  double angle = std::abs(std::fmod(angle1 - angle2, 2.0 * M_PI));
+  if (angle > M_PI) {
+    angle = 2.0 * M_PI - angle;
+  }
+  return angle;
+}
+
 #endif

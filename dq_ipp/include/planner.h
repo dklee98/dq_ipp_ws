@@ -29,8 +29,10 @@ public:
     void get_param(const ros::NodeHandle& nh);
 
     void test();
+    bool p_verbose; // for visualization, default true
 
 protected:
+    mutex m_mutex;
     std::unique_ptr<voxblox_class> map_;
     std::unique_ptr<ray_caster_class> ray_;
     std::unique_ptr<frontier_class> ft_;
@@ -44,14 +46,19 @@ protected:
 
     std::vector<Eigen::Vector3d> best_vp_pos;
     std::vector<double> best_vp_yaw;
+    Eigen::Vector3d target_pos;
+    Eigen::Quaterniond target_ori;
 
     // params
     // double p_checking_distance; // distance in voxelsizes where we check for known voxels
     // bool p_accurate_frontiers;
-    bool p_verbose;
+    double p_replan_pos_th, p_replan_yaw_th;
     
     // constants
     double c_voxel_size;
+
+    // flag
+    bool f_target_reached;
 
     // Visualization
     virtual void v_voxels(std::vector<Eigen::Vector3d> voxels) = 0;

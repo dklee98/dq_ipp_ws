@@ -15,21 +15,22 @@ void frontier_class::get_param(const ros::NodeHandle& nh)    {
     nh.param("map_size_x", x_size, 50.0);
     nh.param("map_size_y", y_size, 50.0);
     nh.param("map_size_z", z_size, 30.0);
-    nh.param("p_down_sample", p_down_sample, 3);
+    nh.param("p_verbose_ft", p_verbose_ft, true);
+    nh.param("p_down_sample", p_down_sample, 1);
     nh.param("p_spatial_cluster_min", p_spatial_cluster_min, 50);
-    nh.param("p_surface_cluster_min", p_surface_cluster_min, 30);
+    nh.param("p_surface_cluster_min", p_surface_cluster_min, 5);
     nh.param("p_cluster_size_xy", p_cluster_size_xy, 2.0);
     nh.param("p_cluster_size_yz", p_cluster_size_yz, 2.0);
     nh.param("p_vp_min_visible_num", p_vp_min_visible_num, 15);
     
 
-    nh.param("p_vp_rmax", p_vp_rmax, 2.5);
-    nh.param("p_vp_rmin", p_vp_rmin, 1.5);
+    nh.param("p_vp_rmax", p_vp_rmax, 4.0);
+    nh.param("p_vp_rmin", p_vp_rmin, 3.0);
     nh.param("p_vp_rnum", p_vp_rnum, 3);
     double dphi = 15 * M_PI / 180.0;
     nh.param("p_vp_dphi", p_vp_dphi, dphi);
     nh.param("p_vp_min_dist", p_vp_min_dist, 0.3);
-    nh.param("p_vp_clearance", p_vp_clearance, 0.21);
+    nh.param("p_vp_clearance", p_vp_clearance, 0.41);
     
     c_voxel_size = map_.getVoxelSize();
     c_voxel_size_inv = 1 / c_voxel_size;
@@ -59,14 +60,14 @@ void frontier_class::searchFrontiers(std::vector<Eigen::Vector3d> new_voxels) {
         }
         iter = ftrs.erase(iter);
     };
-
-    std::cout << "Before remove: " << spatial_frontiers.size() + surface_frontiers.size() << std::endl;
+    if (p_verbose_ft)
+        std::cout << "Before remove: " << spatial_frontiers.size() + surface_frontiers.size() << std::endl;
     
     removed_ids.clear();
     int rmv_idx = 0;
     for (auto iter = spatial_frontiers.begin(); iter != spatial_frontiers.end();)   {
         if (haveOverlap(iter->box_min_, iter->box_max_, new_bmin, new_bmax) && 
-                isFrontierChanged(*iter))   {
+                isFrontierChanged(*iter, 0))   {
             resetFlag(iter, spatial_frontiers);
             removed_ids.push_back(rmv_idx);
         } else{
@@ -76,7 +77,7 @@ void frontier_class::searchFrontiers(std::vector<Eigen::Vector3d> new_voxels) {
     }
     for (auto iter = surface_frontiers.begin(); iter != surface_frontiers.end();)   {
         if (haveOverlap(iter->box_min_, iter->box_max_, new_bmin, new_bmax) && 
-                isFrontierChanged(*iter))   {
+                isFrontierChanged(*iter, floor(iter->cells_.size()/3)))   {
             resetFlag(iter, surface_frontiers);
             removed_ids.push_back(rmv_idx);
         } else{
@@ -84,7 +85,8 @@ void frontier_class::searchFrontiers(std::vector<Eigen::Vector3d> new_voxels) {
             ++iter;
         }
     }
-    std::cout << "After remove: " << spatial_frontiers.size() + surface_frontiers.size() << std::endl;
+    if (p_verbose_ft)
+        std::cout << "After remove: " << spatial_frontiers.size() + surface_frontiers.size() << std::endl;
 
     Eigen::Vector3i idx;
     for (int i = 0; i < new_voxels.size(); ++i) {
@@ -123,7 +125,7 @@ void frontier_class::expandFrontier(const Eigen::Vector3i& first,
                 continue;
 
             indexToPos(nbr, pos);
-            if (pos[2] < 0.4) continue;  // Remove noise close to ground
+            if (pos[2] < 0.5) continue;  // Remove noise close to ground
 
             if (isSurfaceFrontiers(nbr))    {
                 surface_expanded.push_back(pos);
@@ -209,8 +211,10 @@ bool frontier_class::splitXY(const Frontier& frontier, list<Frontier>& splits) {
         }
     }
     Eigen::Vector2d first_pc = vectors.col(max_idx);
-    std::cout << "max idx: " << max_idx << std::endl;
-    std::cout << "mean: " << mean.transpose() << ", first pc: " << first_pc.transpose() << std::endl;
+    if (p_verbose_ft) {
+        std::cout << "max idx: " << max_idx << std::endl;
+        std::cout << "mean: " << mean.transpose() << ", first pc: " << first_pc.transpose() << std::endl;
+    }
 
     // Split the frontier into two groups along the first PC
     Frontier ftr1, ftr2;
@@ -274,9 +278,10 @@ bool frontier_class::splitYZ(const Frontier& frontier, list<Frontier>& splits) {
         }
     }
     Eigen::Vector2d first_pc = vectors.col(max_idx);
-    std::cout << "max idx: " << max_idx << std::endl;
-    std::cout << "mean: " << mean.transpose() << ", first pc: " << first_pc.transpose() << std::endl;
-
+    if (p_verbose_ft){       
+        std::cout << "max idx: " << max_idx << std::endl;
+        std::cout << "mean: " << mean.transpose() << ", first pc: " << first_pc.transpose() << std::endl;
+    }
     // Split the frontier into two groups along the first PC
     Frontier ftr1, ftr2;
     for (auto cell : frontier.cells_) {
@@ -304,14 +309,16 @@ bool frontier_class::splitYZ(const Frontier& frontier, list<Frontier>& splits) {
     return true;
 }
 
-bool frontier_class::isFrontierChanged(const Frontier& ft) {
-  for (auto cell : ft.cells_) {
+bool frontier_class::isFrontierChanged(const Frontier& ft, int cnt_th) {
+    int cnt = 0;
+    for (auto cell : ft.cells_) {
+        if (cnt > cnt_th)   return true;
         Eigen::Vector3i idx;
         posToIndex(cell, idx);
-        if (!isSpatialFrontiers(idx)) return true;
-        // if (!isSurfaceFrontiers(idx)) return true;
-  }
-  return false;
+        if (!isSpatialFrontiers(idx)) ++cnt;
+        // if (!isSpatialFrontiers(idx)) return true;
+    }
+    return false;
 }
 
 void frontier_class::computeFrontierInfo(Frontier& ftr) {
@@ -383,18 +390,18 @@ void frontier_class::computeFrontiersToVisit() {
     }
     // Reset indices of frontiers
     int idx = 0;
-    std::cout << "spatial ";
+    if (p_verbose_ft) std::cout << "spatial ";
     for (auto& ft : spatial_frontiers) {
         ft.id_ = idx++;
-        std::cout << ft.id_ << ", ";
+        if (p_verbose_ft) std::cout << ft.id_ << ", ";
     }
-    std::cout << std::endl << "surface ";
+    if (p_verbose_ft) std::cout << std::endl << "surface ";
     for (auto& ft : surface_frontiers) {
         ft.id_ = idx++;
-        std::cout << ft.id_ << ", ";
+        if (p_verbose_ft) std::cout << ft.id_ << ", ";
     }
     int ss = spatial_frontiers.size() + surface_frontiers.size();
-    std::cout << std::endl << "to visit: " << ss << std::endl;
+    if (p_verbose_ft) std::cout << std::endl << "to visit: " << ss << std::endl;
 }
 
 // Sample viewpoints around frontier's average position, check coverage to the frontier cells
@@ -404,7 +411,8 @@ void frontier_class::sampleViewpoints(Frontier& frontier) {
             rc <= p_vp_rmax + 1e-3; rc += dr)   {
         for (double phi = -M_PI; phi < M_PI; phi += p_vp_dphi) {
             const Eigen::Vector3d sample_pos = frontier.average_ + rc * Eigen::Vector3d(cos(phi), sin(phi), 0);
-
+            if (sample_pos[2] < 0.5)    // height
+                continue;
             // Qualified viewpoint is in bounding box and in safe region
             
             if (!map_.isObserved(sample_pos) || 
@@ -439,28 +447,35 @@ void frontier_class::sampleViewpoints(Frontier& frontier) {
     }
 }
 
-void frontier_class::getTopViewpointsInfo(const Eigen::Vector3d& cur_pos, std::vector<Eigen::Vector3d>& points,
-                                        std::vector<double>& yaws) {
+void frontier_class::getTopViewpointsInfo(const Eigen::Vector3d& cur_pos, const Eigen::Quaterniond& cur_ori, 
+                                        std::vector<Eigen::Vector3d>& points, std::vector<double>& yaws) {
     points.clear();
     yaws.clear();
-    for (auto frontier : surface_frontiers) {
-        bool no_view = true;
-        for (auto view : frontier.viewpoints_) {
-            // Retrieve the first viewpoint that is far enough and has highest coverage
-            if ((view.pos_ - cur_pos).norm() < p_vp_min_dist) continue;
-            points.push_back(view.pos_);
-            yaws.push_back(view.yaw_);
-            no_view = false;
-            break;
-        }
-        if (no_view) {
-            // All viewpoints are very close, just use the first one (with highest coverage).
-            auto view = frontier.viewpoints_.front();
-            points.push_back(view.pos_);
-            yaws.push_back(view.yaw_);
+    if (surface_frontiers.size() == 0 && spatial_frontiers.size() == 0) {
+        points.push_back(cur_pos);
+        yaws.push_back(cur_ori.toRotationMatrix().eulerAngles(0,1,2)(2));
+        return;
+    }
+    if (surface_frontiers.size() != 0)  {
+        for (auto frontier : surface_frontiers) {
+            bool no_view = true;
+            for (auto view : frontier.viewpoints_) {
+                // Retrieve the first viewpoint that is far enough and has highest coverage
+                if ((view.pos_ - cur_pos).norm() < p_vp_min_dist) continue;
+                points.push_back(view.pos_);
+                yaws.push_back(view.yaw_);
+                no_view = false;
+                break;
+            }
+            if (no_view) {
+                // All viewpoints are very close, just use the first one (with highest coverage).
+                auto view = frontier.viewpoints_.front();
+                points.push_back(view.pos_);
+                yaws.push_back(view.yaw_);
+            }
         }
     }
-    if (surface_frontiers.size() == 0)  {
+    else    {
         for (auto frontier : spatial_frontiers) {
             bool no_view = true;
             for (auto view : frontier.viewpoints_) {
@@ -538,9 +553,10 @@ bool frontier_class::isNeighborUnknown(const Eigen::Vector3i& voxel, int th) {
     return false;
 }
 
-bool frontier_class::isNeighborOccupied(const Eigen::Vector3i& voxel) {
+bool frontier_class::isNearOccupied(const Eigen::Vector3i& voxel) {
     // At least one neighbor is occupied
-    auto nbrs = sixNeighbors(voxel);
+    // auto nbrs = sixNeighbors(voxel);
+    auto nbrs = allNeighbors(voxel);
     Eigen::Vector3d pos;
     for (auto nbr : nbrs) {
         indexToPos(nbr, pos);
@@ -614,8 +630,7 @@ bool frontier_class::isSpatialFrontiers(const Eigen::Vector3i& id)  {
 }
 
 bool frontier_class::isSurfaceFrontiers(const Eigen::Vector3i& id)  {
-    // return (knownOccupied(id) && isNeighborUnknown(id, 1));
-    return isNeighborOccupied(id);
+    return isNearOccupied(id); // 26 check
 }
 
 void frontier_class::getVisibleBox(Eigen::Vector3d& bmin, Eigen::Vector3d& bmax,

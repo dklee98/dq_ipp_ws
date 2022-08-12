@@ -109,12 +109,12 @@
         <param name="publish_traversable" value="true" />
         <param name="publish_pointclouds" value="true" />
 
-        <!-- <param name="planner_node/map_size_x" value="50.0" />
+        <!-- <param name="map_size_x" value="50.0" />
         <param name="map_size_y" value="50.0" />
         <param name="map_size_z" value="30.0" />
-        <param name="/planner_node/p_verbose" value="false" />
-        <param name="/planner_node/p_downsampling_factor" value="10.0" />
-        <param name="/planner_node/p_ray_length" value="10.0" /> -->
+        <param name="p_verbose" value="false" />
+        <param name="p_downsampling_factor" value="10.0" />
+        <param name="p_ray_length" value="10.0" /> -->
 
         <remap from="odometry" to="/mavros/local_position/pose" />
         <!-- <remap from="command/trajectory" to="command/trajectory" /> -->

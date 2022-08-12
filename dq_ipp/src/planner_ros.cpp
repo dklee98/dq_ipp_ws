@@ -25,25 +25,12 @@ planner_ros_class::planner_ros_class(const ros::NodeHandle& nh,
 }
 
 void planner_ros_class::cb_pose(const geometry_msgs::PoseStamped& msg) {
-    // Track the current pose
-    g_current_position = Eigen::Vector3d(msg.pose.position.x, msg.pose.position.y, msg.pose.position.z);
-    g_current_orientation = Eigen::Quaterniond(msg.pose.orientation.w, msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z);
-
-    // // check target reached 
-    // if (running_ && !target_reached_) {
-    //     // check goal pos reached (if tol is set)
-    //     if (p_replan_pos_threshold_ <= 0 ||
-    //         (target_position_ - current_position_).norm() <
-    //             p_replan_pos_threshold_) {
-    //         // check goal yaw reached (if tol is set)
-    //         double yaw = tf::getYaw(msg.pose.orientation);
-    //         if (p_replan_yaw_threshold_ <= 0 ||
-    //             defaults::angleDifference(target_yaw_, yaw) <
-    //                 p_replan_yaw_threshold_) {
-    //             target_reached_ = true;
-    //         }
-    //     }
-    // }
+    {
+        lock_guard<mutex> lock(m_mutex);
+        // Track the current pose
+        g_current_position = Eigen::Vector3d(msg.pose.position.x, msg.pose.position.y, msg.pose.position.z);
+        g_current_orientation = Eigen::Quaterniond(msg.pose.orientation.w, msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z);
+    }
 }
 
 bool planner_ros_class::cb_srv_run_planner(std_srvs::SetBool::Request& req, 
@@ -73,17 +60,14 @@ void planner_ros_class::pub_command_point() {
     geometry_msgs::PoseStamped output;
     output.header.frame_id = "world";
     output.header.stamp = ros::Time::now();
-    output.pose.position.x = best_vp_pos[0][0];
-    output.pose.position.y = best_vp_pos[0][1];
-    output.pose.position.z = best_vp_pos[0][2];
-    Eigen::Quaterniond q;
-    ft_->yaw2orientation(best_vp_yaw[0], q);
-    output.pose.orientation.x = q.x();
-    output.pose.orientation.y = q.y();
-    output.pose.orientation.z = q.z();
-    output.pose.orientation.w = q.w();
+    output.pose.position.x = target_pos[0];
+    output.pose.position.y = target_pos[1];
+    output.pose.position.z = target_pos[2];
+    output.pose.orientation.x = target_ori.x();
+    output.pose.orientation.y = target_ori.y();
+    output.pose.orientation.z = target_ori.z();
+    output.pose.orientation.w = target_ori.w();
     pub_target.publish(output);
-
 }
 
 void planner_ros_class::v_voxels(std::vector<Eigen::Vector3d> voxels) {
@@ -137,6 +121,19 @@ void planner_ros_class::v_voxels(std::vector<Eigen::Vector3d> voxels) {
 }
 
 void planner_ros_class::v_frontiers(bool isSurface) {
+    visualization_msgs::MarkerArray del_markers;
+    for (int i = 0; i < marker_len; ++i)  {
+        visualization_msgs::Marker del_marker;
+        del_marker.header.frame_id = 'world';
+        del_marker.header.stamp = ros::Time::now();
+        del_marker.action = visualization_msgs::Marker::DELETE;
+        del_marker.id = i;
+        del_markers.markers.push_back(del_marker);
+    }
+    if (isSurface) v_pub_ftrs_surface.publish(del_markers);
+    else v_pub_ftrs_spatial.publish(del_markers);
+
+    marker_len = 0;
     visualization_msgs::MarkerArray arr_marker;
     std::list<Frontier> frontiers;
     if (isSurface)  frontiers = ft_->surface_frontiers;
@@ -147,11 +144,11 @@ void planner_ros_class::v_frontiers(bool isSurface) {
         marker.header.frame_id = "world";
         marker.header.stamp = ros::Time::now();
         marker.type = visualization_msgs::Marker::CUBE_LIST;
-        marker.id = ftr.id_ + 1;
+        marker.id = ++marker_len;
         marker.action = visualization_msgs::Marker::ADD;
         marker.scale.x = marker.scale.y = marker.scale.z = c_voxel_size;
         marker.pose.orientation.w = 1.0;
-        for (auto& cell : ftr.filtered_cells_)  {    // ftr.filtered_cells_ or ftr.cells_
+        for (auto& cell : ftr.cells_)  {    // ftr.filtered_cells_ or ftr.cells_
             geometry_msgs::Point cube_center;
             cube_center.x = cell[0];
             cube_center.y = cell[1];
@@ -188,9 +185,9 @@ void planner_ros_class::v_frontiers(bool isSurface) {
         vp_marker.header.stamp = vp_txt_1.header.stamp = vp_txt_2.header.stamp = ros::Time::now();
         vp_marker.type = visualization_msgs::Marker::ARROW; 
         vp_txt_1.type = vp_txt_2.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
-        vp_marker.id = -(ftr.id_ + 1); 
-        vp_txt_1.id = (ftr.id_ + 1) * 1000;
-        vp_txt_2.id = -(ftr.id_ + 1) * 1000;
+        vp_marker.id = ++marker_len;
+        vp_txt_1.id = ++marker_len;
+        vp_txt_2.id = ++marker_len;
         vp_marker.action = vp_txt_1.action = vp_txt_2.action = visualization_msgs::Marker::ADD;
         vp_marker.scale.x = 0.5; 
         vp_marker.scale.y = 0.1; 

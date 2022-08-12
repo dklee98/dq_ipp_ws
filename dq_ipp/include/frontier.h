@@ -64,14 +64,16 @@ public:
   void splitLargeFrontiers(list<Frontier>& ftrs, bool isSurface);
   bool splitXY(const Frontier& frontier, list<Frontier>& splits);
   bool splitYZ(const Frontier& frontier, list<Frontier>& splits);
-  bool isFrontierChanged(const Frontier& ft);
+  bool isFrontierChanged(const Frontier& ft, int cnt_th);
   void computeFrontierInfo(Frontier& frontier);
   void downsample(const vector<Vector3d>& cluster_in, vector<Vector3d>& cluster_out);
   
   void computeFrontiersToVisit();
   void sampleViewpoints(Frontier& frontier);
 
-  void getTopViewpointsInfo(const Eigen::Vector3d& cur_pos, std::vector<Eigen::Vector3d>& points, 
+  void getTopViewpointsInfo(const Eigen::Vector3d& cur_pos, 
+                            const Eigen::Quaterniond& orientation,
+                            std::vector<Eigen::Vector3d>& points, 
                             std::vector<double>& yaws);
 
   //////////////
@@ -83,7 +85,7 @@ public:
   bool knownOccupied(const Eigen::Vector3i& idx);
   bool knownUnknown(const Eigen::Vector3i& idx);
   bool isNeighborUnknown(const Eigen::Vector3i& voxel, int th);
-  bool isNeighborOccupied(const Eigen::Vector3i& voxel);
+  bool isNearOccupied(const Eigen::Vector3i& voxel);
   bool isNearNotFREE(const Vector3d& pos);
   bool haveOverlap(const Eigen::Vector3d& min1, const Eigen::Vector3d& max1, 
                   const Eigen::Vector3d& min2, const Eigen::Vector3d& max2);
@@ -106,6 +108,7 @@ private:
   
   
   // params
+  bool p_verbose_ft;  // default false
   int p_spatial_cluster_min, p_surface_cluster_min;
   int p_down_sample;
   double p_cluster_size_xy, p_cluster_size_yz;
