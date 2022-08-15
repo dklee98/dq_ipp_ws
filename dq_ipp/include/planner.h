@@ -44,8 +44,9 @@ protected:
     // Eigen::Vector3d target_position;
     // double target_yaw;
 
-    std::vector<Eigen::Vector3d> best_vp_pos;
-    std::vector<double> best_vp_yaw;
+    // std::vector<Eigen::Vector3d> best_vp_pos;
+    // std::vector<double> best_vp_yaw;
+    std::vector<SubGoal> best_goal;
     Eigen::Vector3d target_pos;
     Eigen::Quaterniond target_ori;
 
@@ -59,6 +60,7 @@ protected:
 
     // flag
     bool f_target_reached;
+    int cnt_initialized;
 
     // Visualization
     virtual void v_voxels(std::vector<Eigen::Vector3d> voxels) = 0;

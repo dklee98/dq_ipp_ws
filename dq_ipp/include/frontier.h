@@ -10,6 +10,8 @@
 #include <chrono> 
 
 #include <pcl/filters/voxel_grid.h>
+#include <pcl/common/centroid.h>
+
 
 #include "voxblox.h"
 #include "ray_caster.h"
@@ -31,6 +33,12 @@ struct Viewpoint {
   int visib_num_;
 };
 
+struct SubGoal  {
+  Eigen::Vector3d g_pos;
+  double g_yaw;
+  double distance;
+};
+
 // A frontier cluster, the viewpoints to cover it
 struct Frontier {
   // Complete voxels belonging to the cluster
@@ -39,6 +47,10 @@ struct Frontier {
   std::vector<Vector3d> filtered_cells_;
   // Average position of all voxels
   Eigen::Vector3d average_;
+  // only surface frontier
+  Eigen::Vector3d normal;
+  Eigen::Vector3d tangent;
+  double sur_distance;
   // Idx of cluster
   int id_;
   // Viewpoints that can cover the cluster
@@ -46,8 +58,8 @@ struct Frontier {
   // Bounding box of cluster, center & 1/2 side length
   Eigen::Vector3d box_min_, box_max_;
   // Path and cost from this cluster to other clusters
-  std::list<vector<Vector3d>> paths_;
-  std::list<double> costs_;
+  // std::list<vector<Vector3d>> paths_;
+  // std::list<double> costs_;
 };
 
 
@@ -64,17 +76,21 @@ public:
   void splitLargeFrontiers(list<Frontier>& ftrs, bool isSurface);
   bool splitXY(const Frontier& frontier, list<Frontier>& splits);
   bool splitYZ(const Frontier& frontier, list<Frontier>& splits);
-  bool isFrontierChanged(const Frontier& ft, int cnt_th);
-  void computeFrontierInfo(Frontier& frontier);
+  bool isFrontierChanged(const Frontier& ft, int cnt_th, bool isSurface);
+  void computeFrontierInfo(Frontier& frontier, bool isSurface);
   void downsample(const vector<Vector3d>& cluster_in, vector<Vector3d>& cluster_out);
   
   void computeFrontiersToVisit();
   void sampleViewpoints(Frontier& frontier);
+  void getNormal(Frontier& frontier);
 
+  // void getTopViewpointsInfo(const Eigen::Vector3d& cur_pos, 
+  //                           const Eigen::Quaterniond& orientation,
+  //                           std::vector<Eigen::Vector3d>& points, 
+  //                           std::vector<double>& yaws);
   void getTopViewpointsInfo(const Eigen::Vector3d& cur_pos, 
                             const Eigen::Quaterniond& orientation,
-                            std::vector<Eigen::Vector3d>& points, 
-                            std::vector<double>& yaws);
+                            std::vector<SubGoal>& sub_goal);
 
   //////////////
   void yaw2orientation(double yaw, Eigen::Quaterniond& orientation);

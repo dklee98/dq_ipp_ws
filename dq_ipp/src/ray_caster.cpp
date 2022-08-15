@@ -55,7 +55,6 @@ bool ray_caster_class::getVisibleVoxels(std::vector<Eigen::Vector3d>* result,
     Eigen::Vector3d voxel_center;
     double distance;
     bool cast_ray;
-    double map_distance;
     for (int i = 0; i < c_res_x; ++i) {
         for (int j = 0; j < c_res_y; ++j) {
             int current_segment = ray_table(i, j);  // get ray starting segment
@@ -114,7 +113,6 @@ bool ray_caster_class::countVisibleFrontiers(int& result,
     Eigen::Vector3d voxel_center;
     double distance;
     bool cast_ray;
-    double map_distance;
     for (int i = 0; i < c_res_x; ++i) {
         for (int j = 0; j < c_res_y; ++j) {
             int current_segment = ray_table(i, j);  // get ray starting segment
@@ -135,9 +133,7 @@ bool ray_caster_class::countVisibleFrontiers(int& result,
 
                     map_.getVoxelCenter(&voxel_center, current_pos);
                     for (auto cell : cluster)   {
-                        if (sqrt(pow(cell[0]-voxel_center[0], 2) + 
-                                pow(cell[1]-voxel_center[1], 2) + 
-                                pow(cell[2]-voxel_center[2], 2)) < p_ray_step)  {
+                        if ((cell - voxel_center).norm() < p_ray_step)  {
                             result += 1;
                         }
                     }

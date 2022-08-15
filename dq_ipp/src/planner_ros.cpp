@@ -180,16 +180,18 @@ void planner_ros_class::v_frontiers(bool isSurface) {
         arr_marker.markers.push_back(marker);
 
         // Visualize strong viewpoint of cluster
-        visualization_msgs::Marker vp_marker, vp_txt_1, vp_txt_2;
-        vp_marker.header.frame_id = vp_txt_1.header.frame_id = vp_txt_2.header.frame_id = "world";
-        vp_marker.header.stamp = vp_txt_1.header.stamp = vp_txt_2.header.stamp = ros::Time::now();
+        visualization_msgs::Marker vp_marker, nv_marker, vp_txt_1, vp_txt_2;
+        vp_marker.header.frame_id = nv_marker.header.frame_id = vp_txt_1.header.frame_id = vp_txt_2.header.frame_id = "world";
+        vp_marker.header.stamp = nv_marker.header.stamp = vp_txt_1.header.stamp = vp_txt_2.header.stamp = ros::Time::now();
         vp_marker.type = visualization_msgs::Marker::ARROW; 
+        nv_marker.type = visualization_msgs::Marker::LINE_LIST; 
         vp_txt_1.type = vp_txt_2.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
         vp_marker.id = ++marker_len;
+        nv_marker.id = ++marker_len;
         vp_txt_1.id = ++marker_len;
         vp_txt_2.id = ++marker_len;
-        vp_marker.action = vp_txt_1.action = vp_txt_2.action = visualization_msgs::Marker::ADD;
-        vp_marker.scale.x = 0.5; 
+        vp_marker.action = nv_marker.action = vp_txt_1.action = vp_txt_2.action = visualization_msgs::Marker::ADD;
+        vp_marker.scale.x = 0.5; nv_marker.scale.x = 0.05;
         vp_marker.scale.y = 0.1; 
         vp_marker.scale.z = 0.1; vp_txt_1.scale.z = vp_txt_2.scale.z = 0.5;
         vp_marker.pose.position.x = vp_txt_1.pose.position.x = ftr.viewpoints_[0].pos_[0];
@@ -204,12 +206,26 @@ void planner_ros_class::v_frontiers(bool isSurface) {
         vp_marker.pose.orientation.y = ori.y();
         vp_marker.pose.orientation.z = ori.z();
         vp_marker.pose.orientation.w = ori.w();
+        // normal vector marker
+        geometry_msgs::Point p;
+        p.x = ftr.average_[0]; p.y = ftr.average_[1]; p.z = ftr.average_[2];
+        nv_marker.points.push_back(p);
+        p.x += ftr.normal[0]; p.y += ftr.normal[1]; p.z += ftr.normal[2];
+        nv_marker.points.push_back(p);
+        p.x = ftr.average_[0]; p.y = ftr.average_[1]; p.z = ftr.average_[2];
+        nv_marker.points.push_back(p);
+        p.x += ftr.tangent[0]; p.y += ftr.tangent[1]; p.z += ftr.tangent[2];
+        nv_marker.points.push_back(p);
+        // text
         vp_txt_1.text = vp_txt_2.text = std::to_string(ftr.id_);
-        vp_marker.color.r = 1.0; vp_txt_1.color.r = vp_txt_2.color.r = 0.0;
-        vp_marker.color.g = 1.0; vp_txt_1.color.g = vp_txt_2.color.g = 0.0;
-        vp_marker.color.b = 1.0; vp_txt_1.color.b = vp_txt_2.color.b = 0.0;
-        vp_marker.color.a = vp_txt_1.color.a = vp_txt_2.color.a = 1.0;
+        // color
+        vp_marker.color.r = nv_marker.color.r = 1.0; vp_txt_1.color.r = vp_txt_2.color.r = 0.0;
+        vp_marker.color.g = nv_marker.color.g = 1.0; vp_txt_1.color.g = vp_txt_2.color.g = 0.0;
+        vp_marker.color.b = nv_marker.color.b = 1.0; vp_txt_1.color.b = vp_txt_2.color.b = 0.0;
+        vp_marker.color.a = nv_marker.color.a = vp_txt_1.color.a = vp_txt_2.color.a = 1.0;
+        // push
         arr_marker.markers.push_back(vp_marker);
+        arr_marker.markers.push_back(nv_marker);
         arr_marker.markers.push_back(vp_txt_1);
         arr_marker.markers.push_back(vp_txt_2);
 

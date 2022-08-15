@@ -24,8 +24,8 @@ void frontier_class::get_param(const ros::NodeHandle& nh)    {
     nh.param("p_vp_min_visible_num", p_vp_min_visible_num, 15);
     
 
-    nh.param("p_vp_rmax", p_vp_rmax, 4.0);
-    nh.param("p_vp_rmin", p_vp_rmin, 3.0);
+    nh.param("p_vp_rmax", p_vp_rmax, 5.0);
+    nh.param("p_vp_rmin", p_vp_rmin, 3.5);
     nh.param("p_vp_rnum", p_vp_rnum, 3);
     double dphi = 15 * M_PI / 180.0;
     nh.param("p_vp_dphi", p_vp_dphi, dphi);
@@ -67,7 +67,7 @@ void frontier_class::searchFrontiers(std::vector<Eigen::Vector3d> new_voxels) {
     int rmv_idx = 0;
     for (auto iter = spatial_frontiers.begin(); iter != spatial_frontiers.end();)   {
         if (haveOverlap(iter->box_min_, iter->box_max_, new_bmin, new_bmax) && 
-                isFrontierChanged(*iter, 0))   {
+                isFrontierChanged(*iter, 0, false))   {
             resetFlag(iter, spatial_frontiers);
             removed_ids.push_back(rmv_idx);
         } else{
@@ -77,7 +77,7 @@ void frontier_class::searchFrontiers(std::vector<Eigen::Vector3d> new_voxels) {
     }
     for (auto iter = surface_frontiers.begin(); iter != surface_frontiers.end();)   {
         if (haveOverlap(iter->box_min_, iter->box_max_, new_bmin, new_bmax) && 
-                isFrontierChanged(*iter, floor(iter->cells_.size()/3)))   {
+                isFrontierChanged(*iter, floor(iter->filtered_cells_.size()/3), true))   {
             resetFlag(iter, surface_frontiers);
             removed_ids.push_back(rmv_idx);
         } else{
@@ -141,13 +141,13 @@ void frontier_class::expandFrontier(const Eigen::Vector3i& first,
         // Compute detailed info
         Frontier frontier;
         frontier.cells_ = spatial_expanded;
-        computeFrontierInfo(frontier);
+        computeFrontierInfo(frontier, false);
         tmp_spatial_frontiers.push_back(frontier);
     }
     if (surface_expanded.size() > p_surface_cluster_min)   {
         Frontier frontier;
         frontier.cells_ = surface_expanded;
-        computeFrontierInfo(frontier);
+        computeFrontierInfo(frontier, true);
         tmp_surface_frontiers.push_back(frontier);
     }
 }
@@ -224,8 +224,8 @@ bool frontier_class::splitXY(const Frontier& frontier, list<Frontier>& splits) {
         else
             ftr2.cells_.push_back(cell);
     }
-    computeFrontierInfo(ftr1);
-    computeFrontierInfo(ftr2);
+    computeFrontierInfo(ftr1, false);
+    computeFrontierInfo(ftr2, false);
 
     // Recursive call to split frontier that is still too large
     list<Frontier> splits2;
@@ -290,8 +290,8 @@ bool frontier_class::splitYZ(const Frontier& frontier, list<Frontier>& splits) {
         else
             ftr2.cells_.push_back(cell);
     }
-    computeFrontierInfo(ftr1);
-    computeFrontierInfo(ftr2);
+    computeFrontierInfo(ftr1, true);
+    computeFrontierInfo(ftr2, true);
 
     // Recursive call to split frontier that is still too large
     list<Frontier> splits2;
@@ -309,21 +309,29 @@ bool frontier_class::splitYZ(const Frontier& frontier, list<Frontier>& splits) {
     return true;
 }
 
-bool frontier_class::isFrontierChanged(const Frontier& ft, int cnt_th) {
+bool frontier_class::isFrontierChanged(const Frontier& ft, int cnt_th, bool isSurface) {
     int cnt = 0;
     for (auto cell : ft.cells_) {
         if (cnt > cnt_th)   return true;
         Eigen::Vector3i idx;
         posToIndex(cell, idx);
+        // if (isSurface)  {
+        //     if (!isSurfaceFrontiers(idx)) ++cnt;
+        // }
+        // else{
+        //     if (!isSpatialFrontiers(idx)) ++cnt;
+        // }
         if (!isSpatialFrontiers(idx)) ++cnt;
-        // if (!isSpatialFrontiers(idx)) return true;
     }
     return false;
 }
 
-void frontier_class::computeFrontierInfo(Frontier& ftr) {
+void frontier_class::computeFrontierInfo(Frontier& ftr, bool isSurface) {
     // Compute average position and bounding box of cluster
     ftr.average_.setZero();
+    ftr.normal.setZero();
+    ftr.tangent.setZero();
+    ftr.sur_distance = 0.0;
     ftr.box_max_ = ftr.cells_.front();
     ftr.box_min_ = ftr.cells_.front();
     for (auto cell : ftr.cells_) {
@@ -334,9 +342,43 @@ void frontier_class::computeFrontierInfo(Frontier& ftr) {
         }
     }
     ftr.average_ /= double(ftr.cells_.size());
-
     // Compute downsampled cluster
     downsample(ftr.cells_, ftr.filtered_cells_);
+    if (isSurface)  {
+        Eigen::Matrix3f cov_;   // covariance
+        Eigen::Vector4f pc_mean_;   // average point
+        float d_;   // distance between UAV and surface
+        Eigen::VectorXf normal_;
+        Eigen::VectorXf tangent_;
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+        for (auto cell : ftr.filtered_cells_) 
+            cloud->points.emplace_back(cell[0], cell[1], cell[2]);
+        pcl::computeMeanAndCovarianceMatrix(*cloud, cov_, pc_mean_);
+
+        // Singular Value Decomposition: SVD (svd.singularValues() : scale value)
+        Eigen::JacobiSVD<Eigen::MatrixXf> svd(cov_, Eigen::DecompositionOptions::ComputeFullU);
+        Eigen::Vector3f ftr_mean = pc_mean_.head<3>();    // average point
+        // use the least/most singular vector as normal/tangent
+        normal_ = (svd.matrixU().col(2));
+        tangent_ = (svd.matrixU().col(0));
+        // normal sign check!!
+        d_ = -(normal_.transpose() * ftr_mean)(0, 0);
+
+        ftr.normal[0] = normal_[0];
+        ftr.normal[1] = normal_[1];
+        ftr.normal[2] = normal_[2];
+        ftr.tangent[0] = tangent_[0];
+        ftr.tangent[1] = tangent_[1];
+        ftr.tangent[2] = tangent_[2];
+        ftr.sur_distance = (double)d_;
+        std::cout << "==============================" << std::endl;
+        std::cout << "<< normal vector >>" << std::endl;
+        std::cout << ftr.normal << std::endl;
+        std::cout << "<< tangent vector >>" << std::endl;
+        std::cout << ftr.tangent << std::endl;
+        std::cout << "surface distance: " << ftr.sur_distance << std::endl;
+        std::cout << "vertical: " << ftr.normal.dot(ftr.tangent) << std::endl;
+    }
 }
 
 void frontier_class::downsample(
@@ -365,6 +407,7 @@ void frontier_class::computeFrontiersToVisit() {
     for (auto& tmp_ftr : tmp_spatial_frontiers) {
         // Search viewpoints around frontier
         sampleViewpoints(tmp_ftr);
+        // here calculate viewpoint's gain
         if (!tmp_ftr.viewpoints_.empty()) {
             list<Frontier>::iterator inserted = spatial_frontiers.insert(spatial_frontiers.end(), tmp_ftr);
             // Sort the viewpoints by coverage fraction, best view in front
@@ -378,6 +421,7 @@ void frontier_class::computeFrontiersToVisit() {
     for (auto& tmp_ftr : tmp_surface_frontiers) {
         // Search viewpoints around frontier
         sampleViewpoints(tmp_ftr);
+        // here calculate viewpoint's gain
         if (!tmp_ftr.viewpoints_.empty()) {
             list<Frontier>::iterator inserted = surface_frontiers.insert(surface_frontiers.end(), tmp_ftr);
             // Sort the viewpoints by coverage fraction, best view in front
@@ -447,13 +491,83 @@ void frontier_class::sampleViewpoints(Frontier& frontier) {
     }
 }
 
+// void frontier_class::getNormal(Frontier& frontier) {
+//     frontier.normal.setZero();
+//     frontier.tangent.setZero();
+//     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+//     Eigen::Matrix3f cov_;
+//     Eigen::Vector4f pc_mean_;
+//     Eigen::VectorXf singular_values_;
+//     Eigen::VectorXf normal_;
+//     Eigen::VectorXf tangent_;
+//     for (auto cell : frontier.filtered_cells_) 
+//         cloud->points.emplace_back(cell[0], cell[1], cell[2]);
+    
+//     pcl::computeMeanAndCovarianceMatrix(*cloud, cov_, pc_mean_);
+
+//     // Singular Value Decomposition: SVD
+//     Eigen::JacobiSVD<Eigen::MatrixXf> svd(cov_, Eigen::DecompositionOptions::ComputeFullU);
+//     singular_values_ = svd.singularValues();    // scale value
+//     // use the least singular vector as normal
+//     normal_ = (svd.matrixU().col(2));
+//     tangent_ = (svd.matrixU().col(0));
+//     // if (normal_(2) < 0) { for(int i=0; i<3; i++) normal_(i) *= -1; }
+
+//     // // mean ground seeds value
+//     Eigen::Vector3f seeds_mean = pc_mean_.head<3>();    // average
+
+//     // // according to normal.T*[x,y,z] = -d
+//     float d_ = -(normal_.transpose() * seeds_mean)(0, 0);
+
+//     frontier.normal[0] = normal_[0];
+//     frontier.normal[1] = normal_[1];
+//     frontier.normal[2] = normal_[2];
+//     frontier.tangent[0] = tangent_[0];
+//     frontier.tangent[1] = tangent_[1];
+//     frontier.tangent[2] = tangent_[2];
+//     std::cout << "==============================" << std::endl;
+//     // std::cout << "length of normal vector : " << normal_.norm() << std::endl;
+//     // std::cout << seeds_mean << std::endl;
+//     // std::cout << "size: " << singular_values_.size() << std::endl;
+//     // std::cout << singular_values_ << std::endl;
+//     // std::cout << svd.matrixU() << std::endl;
+//     // std::cout << d_ << std::endl;
+//     // std::cout << frontier.normal.dot(frontier.tangent) << std::endl;
+//     std::cout << "==============================" << std::endl;
+
+
+//     // frontier.avg_normal.setZero();
+//     // pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
+//     // for (auto cell : frontier.filtered_cells_)
+//     //     cloud->points.emplace_back(cell[0], cell[1], cell[2]);
+
+//     // pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
+//     // ne.setInputCloud (cloud);
+//     // pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ> ());
+//     // ne.setSearchMethod (tree);
+//     // // Output datasets
+//     // pcl::PointCloud<pcl::Normal>::Ptr cloud_normals (new pcl::PointCloud<pcl::Normal>);
+//     // ne.setRadiusSearch (0.25);
+//     // ne.compute (*cloud_normals);
+//     // for (auto pt : cloud_normals->points)   {
+//     //     if (isnan(pt.data_c[0]) || isnan(pt.data_c[1]) || isnan(pt.data_c[2]) || isnan(pt.data_c[3]))   continue;
+//     //     auto tmp = Eigen::Vector3d(pt.data_c[0], pt.data_c[1], pt.data_c[2]);
+//     //     frontier.normals.push_back(tmp);
+//     //     frontier.avg_normal += tmp;
+//     // }
+//     // frontier.avg_normal /= double(frontier.normals.size());
+// }
+
 void frontier_class::getTopViewpointsInfo(const Eigen::Vector3d& cur_pos, const Eigen::Quaterniond& cur_ori, 
-                                        std::vector<Eigen::Vector3d>& points, std::vector<double>& yaws) {
-    points.clear();
-    yaws.clear();
+                                        std::vector<SubGoal>& sub_goal) {
+    sub_goal.clear();
+    SubGoal tmp_goal;
+    int cnt_surface = 0;
     if (surface_frontiers.size() == 0 && spatial_frontiers.size() == 0) {
-        points.push_back(cur_pos);
-        yaws.push_back(cur_ori.toRotationMatrix().eulerAngles(0,1,2)(2));
+        tmp_goal.g_pos = cur_pos;
+        tmp_goal.g_yaw = cur_ori.toRotationMatrix().eulerAngles(0,1,2)(2);
+        tmp_goal.distance =0.0;
+        sub_goal.push_back(tmp_goal);
         return;
     }
     if (surface_frontiers.size() != 0)  {
@@ -461,17 +575,24 @@ void frontier_class::getTopViewpointsInfo(const Eigen::Vector3d& cur_pos, const 
             bool no_view = true;
             for (auto view : frontier.viewpoints_) {
                 // Retrieve the first viewpoint that is far enough and has highest coverage
-                if ((view.pos_ - cur_pos).norm() < p_vp_min_dist) continue;
-                points.push_back(view.pos_);
-                yaws.push_back(view.yaw_);
+                double d = (view.pos_ - cur_pos).norm();
+                if (d < p_vp_min_dist) continue;
+                tmp_goal.g_pos = view.pos_;
+                tmp_goal.g_yaw = view.yaw_;
+                tmp_goal.distance = d;
+                sub_goal.push_back(tmp_goal);
+                cnt_surface += 1;
                 no_view = false;
                 break;
             }
             if (no_view) {
                 // All viewpoints are very close, just use the first one (with highest coverage).
                 auto view = frontier.viewpoints_.front();
-                points.push_back(view.pos_);
-                yaws.push_back(view.yaw_);
+                tmp_goal.g_pos = view.pos_;
+                tmp_goal.g_yaw = view.yaw_;
+                tmp_goal.distance = (view.pos_ - cur_pos).norm();
+                sub_goal.push_back(tmp_goal);
+                cnt_surface += 1;
             }
         }
     }
@@ -480,20 +601,33 @@ void frontier_class::getTopViewpointsInfo(const Eigen::Vector3d& cur_pos, const 
             bool no_view = true;
             for (auto view : frontier.viewpoints_) {
                 // Retrieve the first viewpoint that is far enough and has highest coverage
-                if ((view.pos_ - cur_pos).norm() < p_vp_min_dist) continue;
-                points.push_back(view.pos_);
-                yaws.push_back(view.yaw_);
+                int d = (view.pos_ - cur_pos).norm();
+                if (d < p_vp_min_dist) continue;
+                tmp_goal.g_pos = view.pos_;
+                tmp_goal.g_yaw = view.yaw_;
+                tmp_goal.distance = d;
+                sub_goal.push_back(tmp_goal);
                 no_view = false;
                 break;
             }
             if (no_view) {
                 // All viewpoints are very close, just use the first one (with highest coverage).
                 auto view = frontier.viewpoints_.front();
-                points.push_back(view.pos_);
-                yaws.push_back(view.yaw_);
+                tmp_goal.g_pos = view.pos_;
+                tmp_goal.g_yaw = view.yaw_;
+                tmp_goal.distance = (view.pos_ - cur_pos).norm();
+                sub_goal.push_back(tmp_goal);
             }
         }
     }
+    sort(
+        sub_goal.begin(), sub_goal.begin()+cnt_surface,
+        [](const SubGoal& g1, const SubGoal& g2){return g1.distance < g2.distance;}
+    );
+    sort(
+        sub_goal.begin()+cnt_surface, sub_goal.end(),
+        [](const SubGoal& g1, const SubGoal& g2){return g1.distance < g2.distance;}
+    );
 }
 
 /////////////////////////
@@ -541,7 +675,8 @@ bool frontier_class::knownUnknown(const Eigen::Vector3i& idx) {
 
 bool frontier_class::isNeighborUnknown(const Eigen::Vector3i& voxel, int th) {
     // At least one neighbor is unknown
-    auto nbrs = sixNeighbors(voxel);
+    // auto nbrs = sixNeighbors(voxel);
+    auto nbrs = allNeighbors(voxel);
     Eigen::Vector3d pos;
     int cnt = 0;
     for (auto nbr : nbrs) {

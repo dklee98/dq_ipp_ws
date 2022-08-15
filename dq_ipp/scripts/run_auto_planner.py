@@ -24,7 +24,7 @@ signal.signal(signal.SIGINT, signal_handler)
 
 class run_auto_planner():
     def __init__(self):
-        rospy.init_node('mav_active_3d_planning_node', anonymous=True)
+        rospy.init_node('auto_planning_node', anonymous=True)
 
         self.sub_uav_state = rospy.Subscriber('/mavros/state', State, self.cb_uav_state)
         self.sub_uav_pose = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.cb_uav_pose)
@@ -87,7 +87,7 @@ class run_auto_planner():
         
         # q = self.target_q * quaternion_inverse(self.cur_q)
         # self.error[3] = euler_from_quaternion(q)[2]
-        self.error[3] = (self.target_yaw - self.cur_yaw)
+        self.error[3] = math.fmod(self.target_yaw - self.cur_yaw, 2*math.pi)
 
         vel_cmd = TwistStamped()
         vel_cmd.header.stamp = rospy.Time.now()
@@ -142,9 +142,9 @@ if __name__ == '__main__':
                     if runner.pose_in:
                         if runner.cur_local_pose.position.z > 1.0:
                             runner.initialized = True
-                            time.sleep(1.0)
                             runner.srv_run_planner(True)
                             print('run planner On')
+                            time.sleep(1.0)
                 time.sleep(0.03)
                 continue
             

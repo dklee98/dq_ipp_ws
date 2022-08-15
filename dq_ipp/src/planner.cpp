@@ -18,13 +18,12 @@ void planner_class::get_param(const ros::NodeHandle& nh)    {
     nh.param("/p_replan_yaw_th", p_replan_yaw_th, 0.35);
     c_voxel_size = map_->getVoxelSize();
     f_target_reached = true;
+    cnt_initialized = 0;
 }
 
 void planner_class::test()  {
-    // test getVisibleVoxels
     std::vector<Eigen::Vector3d> new_voxels;
-    // ROS_INFO("getVisiblevoxels");
-    tic();
+    // tic();
     ray_->getVisibleVoxels(&new_voxels, g_current_position, g_current_orientation);
     new_voxels.erase(std::unique(new_voxels.begin(), new_voxels.end()), new_voxels.end());
     // toc();
@@ -32,11 +31,19 @@ void planner_class::test()  {
     // tic();
     ft_->searchFrontiers(new_voxels);
     ft_->computeFrontiersToVisit();
-    ft_->getTopViewpointsInfo(g_current_position, g_current_orientation, best_vp_pos, best_vp_yaw);
+    // ft_->getTopViewpointsInfo(g_current_position, g_current_orientation, best_vp_pos, best_vp_yaw);
+    ft_->getTopViewpointsInfo(g_current_position, g_current_orientation, best_goal);
     if (f_target_reached) {
         if (p_verbose)  std::cout << "Target reached!!" << std::endl;
-        target_pos = {best_vp_pos[0][0], best_vp_pos[0][1], best_vp_pos[0][2]};
-        ft_->yaw2orientation(best_vp_yaw[0], target_ori);
+        if (cnt_initialized < 4)  {
+            target_pos = g_current_position;
+            ft_->yaw2orientation(M_PI/2 - cnt_initialized*M_PI/2, target_ori);
+            cnt_initialized += 1;
+        }
+        else{
+            target_pos = {best_goal[0].g_pos[0], best_goal[0].g_pos[1], best_goal[0].g_pos[2]};
+            ft_->yaw2orientation(best_goal[0].g_yaw, target_ori);
+        }
         f_target_reached = false;
     }
     else{
@@ -48,7 +55,7 @@ void planner_class::test()  {
             }
         }
     }
-    toc();
+    // toc();
     if (p_verbose)  {
         v_voxels(new_voxels);
         v_frontiers(false); // spatial frontiers
