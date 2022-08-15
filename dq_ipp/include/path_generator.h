@@ -4,16 +4,17 @@
 #include "utility.hpp"
 
 #include <ros/ros.h>
+#include <nav_msgs/Path.h>
 #include <Eigen/Eigen> // whole Eigen library : Sparse(Linearalgebra) + Dense(Core+Geometry+LU+Cholesky+SVD+QR+Eigenvalues)
 #include <iostream> //cout
 #include <math.h> // pow, atan2
 #include <chrono> 
+#include <vector>
 
 #include "voxblox.h"
+#include "rrt_star.h"
 
 using namespace std;
-using namespace std::chrono; 
-using namespace Eigen;
 
 class path_generator_class{
 public:
@@ -22,29 +23,21 @@ public:
 
     void get_param(const ros::NodeHandle& nh);
 
-    void ex_func_uav_pose(const Eigen::Vector3d& cur_pos, 
-                            const Eigen::Quaterniond& cur_ori);
-   
+    nav_msgs::Path ex_func_uav_pose(const Eigen::Vector3d& cur_pos, const Eigen::Vector3d& goal_pos);
 
 private:
-    voxblox_class& map_;    // voxblox map object
-    // if you need ray_caster or frontier object then
-    // you have to 
-    // 1. include "frontier.h"
-    // 2. add object variable 'frontier_class& ftr_';
-    // 3. add class_generator parameter. 
-    // e.g. path_generator_class(... , frontier_class& ftr_);
+    // voxblox map object
+    voxblox_class& map_;
+
+    // RRT* ptr
+    shared_ptr<RRT_STAR> rrt_star_ = nullptr;
 
     // params
-    double p_parameter_name;    // sample
-    
-    // constants
-    double c_voxel_size;    // voxel size
-
-    // variables
-    Eigen::Vector3d uav_cur_pos;    // sample variable
-    Eigen::Quaterniond uav_cur_ori;
-
+    int p_max_rrt_iteration;
+    double p_rrt_collision_r;
+    double p_extension_range;
+    double p_goal_reached_tolerance_distance;
+    vector<double> p_map_min, p_map_max;
 };
 
 #endif

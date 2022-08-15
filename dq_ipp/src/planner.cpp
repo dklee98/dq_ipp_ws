@@ -39,7 +39,12 @@ void planner_class::test()  {
     // input: 'best_goal' or 'target_pos & target_ori'
     // output: trajectory or drone command (position or velocity)
     // maybe "Check target reached" part can be included..??
-    pg_->ex_func_uav_pose(g_current_position, g_current_orientation);
+    Eigen::Vector3d temporal_goal_position(5.0, 5.0, 2.0);
+    nav_msgs::Path rrt_result = pg_->ex_func_uav_pose(g_current_position, temporal_goal_position);
+    if (rrt_result.poses.size() > 0)
+    {
+        //// solved, do something
+    }
     //////////////////////////////////////////////////
     // Check target reached
     if (f_target_reached) {

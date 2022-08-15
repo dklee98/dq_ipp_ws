@@ -45,9 +45,10 @@ public:
     // get the maximum allowed weight (return 0 if using uncapped weights)
     double getMaximumWeight();
 
+    //// changed as shared ptr!!! + public, or cannot be used
+    std::shared_ptr<voxblox::EsdfServer> esdf_server;
 
 private:
-    std::unique_ptr<voxblox::EsdfServer> esdf_server;
 
     //param
     double p_collision_radius;
