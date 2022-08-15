@@ -20,7 +20,7 @@ voxblox_class::voxblox_class(const ros::NodeHandle& p_nh)  {
 
 void voxblox_class::get_param(const ros::NodeHandle& p_nh)    {
     // p_collision_radius = 1.0;
-    p_nh.param("/p_collision_radius", p_collision_radius, 1.0);
+    p_nh.param("/planner_node/p_collision_radius", p_collision_radius, 1.0);
 }
 
 bool voxblox_class::isObserved(const Eigen::Vector3d& point) {

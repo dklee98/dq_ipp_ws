@@ -12,6 +12,7 @@
 #include "voxblox.h"
 #include "ray_caster.h"
 #include "frontier.h"
+#include "path_generator.h"
 
 using namespace std;
 using namespace std::chrono; 
@@ -20,6 +21,7 @@ using namespace Eigen;
 class voxblox_class;
 class ray_caster_class;
 class frontier_class;
+class path_generator_class;
 
 class planner_class{
 public:
@@ -36,6 +38,7 @@ protected:
     std::unique_ptr<voxblox_class> map_;
     std::unique_ptr<ray_caster_class> ray_;
     std::unique_ptr<frontier_class> ft_;
+    std::unique_ptr<path_generator_class> pg_;
 
     // variables
     bool f_planning;    // flag

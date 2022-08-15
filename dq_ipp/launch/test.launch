@@ -109,12 +109,36 @@
         <param name="publish_traversable" value="true" />
         <param name="publish_pointclouds" value="true" />
 
-        <!-- <param name="map_size_x" value="50.0" />
+        <!-- planner.cpp -->
+        <param name="p_verbose" value="true" />
+        <param name="p_replan_pos_th" value="0.35" />
+        <param name="p_replan_yaw_th" value="0.35" />
+        <!-- voxblox.cpp -->
+        <param name="p_collision_radius" value="1.0" />
+        <!-- ray_caster.cpp -->
+        <param name="p_downsampling_factor" value="2.0" />
+        <param name="p_ray_length" value="5.0" />
+        <param name="p_focal_length" value="320.0" />
+        <param name="p_resolution_x" value="640.0" />
+        <param name="p_resolution_y" value="480.0" />
+        <!-- frontier.cpp -->
+        <param name="map_size_x" value="50.0" />
         <param name="map_size_y" value="50.0" />
         <param name="map_size_z" value="30.0" />
-        <param name="p_verbose" value="false" />
-        <param name="p_downsampling_factor" value="10.0" />
-        <param name="p_ray_length" value="10.0" /> -->
+        <param name="p_verbose_ft" value="false" />
+        <param name="p_down_sample" value="1" />
+        <param name="p_spatial_cluster_min" value="50" />
+        <param name="p_surface_cluster_min" value="5" />
+        <param name="p_cluster_size_xy" value="2.0" />
+        <param name="p_cluster_size_yz" value="2.0" />
+        <param name="p_vp_min_visible_num" value="15.0" />
+        <param name="p_vp_rmax" value="4.5" />
+        <param name="p_vp_rmin" value="3.5" />
+        <param name="p_vp_rnum" value="3" />
+        <param name="p_vp_dphi" value="$(eval 15 * 3.1415926 / 180.0)" />
+        <param name="p_vp_min_dist" value="0.3" />
+        <param name="p_vp_clearance" value="0.41" />
+        
 
         <remap from="odometry" to="/mavros/local_position/pose" />
         <!-- <remap from="command/trajectory" to="command/trajectory" /> -->

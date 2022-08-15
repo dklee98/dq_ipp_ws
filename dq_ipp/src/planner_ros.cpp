@@ -148,7 +148,7 @@ void planner_ros_class::v_frontiers(bool isSurface) {
         marker.action = visualization_msgs::Marker::ADD;
         marker.scale.x = marker.scale.y = marker.scale.z = c_voxel_size;
         marker.pose.orientation.w = 1.0;
-        for (auto& cell : ftr.cells_)  {    // ftr.filtered_cells_ or ftr.cells_
+        for (auto& cell : ftr.filtered_cells_)  {    // ftr.filtered_cells_ or ftr.cells_
             geometry_msgs::Point cube_center;
             cube_center.x = cell[0];
             cube_center.y = cell[1];

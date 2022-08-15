@@ -12,25 +12,25 @@ frontier_class::frontier_class(voxblox_class& map, ray_caster_class& ray, const 
 
 void frontier_class::get_param(const ros::NodeHandle& nh)    {
     double x_size, y_size, z_size;
-    nh.param("map_size_x", x_size, 50.0);
-    nh.param("map_size_y", y_size, 50.0);
-    nh.param("map_size_z", z_size, 30.0);
-    nh.param("p_verbose_ft", p_verbose_ft, true);
-    nh.param("p_down_sample", p_down_sample, 1);
-    nh.param("p_spatial_cluster_min", p_spatial_cluster_min, 50);
-    nh.param("p_surface_cluster_min", p_surface_cluster_min, 5);
-    nh.param("p_cluster_size_xy", p_cluster_size_xy, 2.0);
-    nh.param("p_cluster_size_yz", p_cluster_size_yz, 2.0);
-    nh.param("p_vp_min_visible_num", p_vp_min_visible_num, 15);
+    nh.param("/planner_node/map_size_x", x_size, 50.0);
+    nh.param("/planner_node/map_size_y", y_size, 50.0);
+    nh.param("/planner_node/map_size_z", z_size, 30.0);
+    nh.param("/planner_node/p_verbose_ft", p_verbose_ft, false);
+    nh.param("/planner_node/p_down_sample", p_down_sample, 3);
+    nh.param("/planner_node/p_spatial_cluster_min", p_spatial_cluster_min, 50);
+    nh.param("/planner_node/p_surface_cluster_min", p_surface_cluster_min, 5);
+    nh.param("/planner_node/p_cluster_size_xy", p_cluster_size_xy, 2.0);
+    nh.param("/planner_node/p_cluster_size_yz", p_cluster_size_yz, 2.0);
+    nh.param("/planner_node/p_vp_min_visible_num", p_vp_min_visible_num, 15);
     
 
-    nh.param("p_vp_rmax", p_vp_rmax, 5.0);
-    nh.param("p_vp_rmin", p_vp_rmin, 3.5);
-    nh.param("p_vp_rnum", p_vp_rnum, 3);
+    nh.param("/planner_node/p_vp_rmax", p_vp_rmax, 5.0);
+    nh.param("/planner_node/p_vp_rmin", p_vp_rmin, 3.5);
+    nh.param("/planner_node/p_vp_rnum", p_vp_rnum, 3);
     double dphi = 15 * M_PI / 180.0;
-    nh.param("p_vp_dphi", p_vp_dphi, dphi);
-    nh.param("p_vp_min_dist", p_vp_min_dist, 0.3);
-    nh.param("p_vp_clearance", p_vp_clearance, 0.41);
+    nh.param("/planner_node/p_vp_dphi", p_vp_dphi, dphi);
+    nh.param("/planner_node/p_vp_min_dist", p_vp_min_dist, 0.3);
+    nh.param("/planner_node/p_vp_clearance", p_vp_clearance, 0.41);
     
     c_voxel_size = map_.getVoxelSize();
     c_voxel_size_inv = 1 / c_voxel_size;
@@ -371,13 +371,15 @@ void frontier_class::computeFrontierInfo(Frontier& ftr, bool isSurface) {
         ftr.tangent[1] = tangent_[1];
         ftr.tangent[2] = tangent_[2];
         ftr.sur_distance = (double)d_;
-        std::cout << "==============================" << std::endl;
-        std::cout << "<< normal vector >>" << std::endl;
-        std::cout << ftr.normal << std::endl;
-        std::cout << "<< tangent vector >>" << std::endl;
-        std::cout << ftr.tangent << std::endl;
-        std::cout << "surface distance: " << ftr.sur_distance << std::endl;
-        std::cout << "vertical: " << ftr.normal.dot(ftr.tangent) << std::endl;
+        if (p_verbose_ft)   {
+            std::cout << "==============================" << std::endl;
+            std::cout << "<< normal vector >>" << std::endl;
+            std::cout << ftr.normal << std::endl;
+            std::cout << "<< tangent vector >>" << std::endl;
+            std::cout << ftr.tangent << std::endl;
+            std::cout << "surface distance: " << ftr.sur_distance << std::endl;
+            std::cout << "vertical: " << ftr.normal.dot(ftr.tangent) << std::endl;
+        }
     }
 }
 
@@ -416,7 +418,6 @@ void frontier_class::computeFrontiersToVisit() {
                 [](const Viewpoint& v1, const Viewpoint& v2) { return v1.visib_num_ > v2.visib_num_; });
             if (first_spatial_ftr == spatial_frontiers.end()) first_spatial_ftr = inserted;
         }
-        // spatial_frontiers.insert(spatial_frontiers.end(), tmp_ftr);
     }
     for (auto& tmp_ftr : tmp_surface_frontiers) {
         // Search viewpoints around frontier
@@ -430,7 +431,6 @@ void frontier_class::computeFrontiersToVisit() {
                 [](const Viewpoint& v1, const Viewpoint& v2) { return v1.visib_num_ > v2.visib_num_; });
             if (first_surface_ftr == surface_frontiers.end()) first_surface_ftr = inserted;
         }
-        // surface_frontiers.insert(surface_frontiers.end(), tmp_ftr);
     }
     // Reset indices of frontiers
     int idx = 0;
