@@ -10,6 +10,8 @@ find_package(catkin REQUIRED COMPONENTS
   cv_bridge
   pcl_conversions
   pcl_ros
+  tf
+  tf_conversions
   voxblox_ros
   voxblox
 )

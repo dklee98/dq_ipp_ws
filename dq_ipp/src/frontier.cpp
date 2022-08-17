@@ -11,10 +11,11 @@ frontier_class::frontier_class(voxblox_class& map, ray_caster_class& ray, const 
 }
 
 void frontier_class::get_param(const ros::NodeHandle& nh)    {
-    double x_size, y_size, z_size;
-    nh.param("/planner_node/map_size_x", x_size, 50.0);
-    nh.param("/planner_node/map_size_y", y_size, 50.0);
-    nh.param("/planner_node/map_size_z", z_size, 30.0);
+    nh.getParam("/planner_node/map_min", p_map_min);
+    nh.getParam("/planner_node/map_max", p_map_max);
+    double x_size = p_map_max[0] - p_map_min[0];
+    double y_size = p_map_max[1] - p_map_min[1];
+    double z_size = p_map_max[2] - p_map_min[2];
     nh.param("/planner_node/p_verbose_ft", p_verbose_ft, false);
     nh.param("/planner_node/p_down_sample", p_down_sample, 3);
     nh.param("/planner_node/p_spatial_cluster_min", p_spatial_cluster_min, 50);
@@ -34,7 +35,7 @@ void frontier_class::get_param(const ros::NodeHandle& nh)    {
     
     c_voxel_size = map_.getVoxelSize();
     c_voxel_size_inv = 1 / c_voxel_size;
-    c_map_origin = Eigen::Vector3d(-x_size / 2.0, -y_size / 2.0, 1.0);
+    c_map_origin = Eigen::Vector3d(p_map_min[0], p_map_min[1], p_map_min[2]);
     c_map_size = Eigen::Vector3d(x_size, y_size, z_size);
     for (int i = 0; i < 3; ++i) {
         c_map_voxel_num(i) = ceil(c_map_size(i) / c_voxel_size);
@@ -490,73 +491,6 @@ void frontier_class::sampleViewpoints(Frontier& frontier) {
         }
     }
 }
-
-// void frontier_class::getNormal(Frontier& frontier) {
-//     frontier.normal.setZero();
-//     frontier.tangent.setZero();
-//     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-//     Eigen::Matrix3f cov_;
-//     Eigen::Vector4f pc_mean_;
-//     Eigen::VectorXf singular_values_;
-//     Eigen::VectorXf normal_;
-//     Eigen::VectorXf tangent_;
-//     for (auto cell : frontier.filtered_cells_) 
-//         cloud->points.emplace_back(cell[0], cell[1], cell[2]);
-    
-//     pcl::computeMeanAndCovarianceMatrix(*cloud, cov_, pc_mean_);
-
-//     // Singular Value Decomposition: SVD
-//     Eigen::JacobiSVD<Eigen::MatrixXf> svd(cov_, Eigen::DecompositionOptions::ComputeFullU);
-//     singular_values_ = svd.singularValues();    // scale value
-//     // use the least singular vector as normal
-//     normal_ = (svd.matrixU().col(2));
-//     tangent_ = (svd.matrixU().col(0));
-//     // if (normal_(2) < 0) { for(int i=0; i<3; i++) normal_(i) *= -1; }
-
-//     // // mean ground seeds value
-//     Eigen::Vector3f seeds_mean = pc_mean_.head<3>();    // average
-
-//     // // according to normal.T*[x,y,z] = -d
-//     float d_ = -(normal_.transpose() * seeds_mean)(0, 0);
-
-//     frontier.normal[0] = normal_[0];
-//     frontier.normal[1] = normal_[1];
-//     frontier.normal[2] = normal_[2];
-//     frontier.tangent[0] = tangent_[0];
-//     frontier.tangent[1] = tangent_[1];
-//     frontier.tangent[2] = tangent_[2];
-//     std::cout << "==============================" << std::endl;
-//     // std::cout << "length of normal vector : " << normal_.norm() << std::endl;
-//     // std::cout << seeds_mean << std::endl;
-//     // std::cout << "size: " << singular_values_.size() << std::endl;
-//     // std::cout << singular_values_ << std::endl;
-//     // std::cout << svd.matrixU() << std::endl;
-//     // std::cout << d_ << std::endl;
-//     // std::cout << frontier.normal.dot(frontier.tangent) << std::endl;
-//     std::cout << "==============================" << std::endl;
-
-
-//     // frontier.avg_normal.setZero();
-//     // pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
-//     // for (auto cell : frontier.filtered_cells_)
-//     //     cloud->points.emplace_back(cell[0], cell[1], cell[2]);
-
-//     // pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
-//     // ne.setInputCloud (cloud);
-//     // pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ> ());
-//     // ne.setSearchMethod (tree);
-//     // // Output datasets
-//     // pcl::PointCloud<pcl::Normal>::Ptr cloud_normals (new pcl::PointCloud<pcl::Normal>);
-//     // ne.setRadiusSearch (0.25);
-//     // ne.compute (*cloud_normals);
-//     // for (auto pt : cloud_normals->points)   {
-//     //     if (isnan(pt.data_c[0]) || isnan(pt.data_c[1]) || isnan(pt.data_c[2]) || isnan(pt.data_c[3]))   continue;
-//     //     auto tmp = Eigen::Vector3d(pt.data_c[0], pt.data_c[1], pt.data_c[2]);
-//     //     frontier.normals.push_back(tmp);
-//     //     frontier.avg_normal += tmp;
-//     // }
-//     // frontier.avg_normal /= double(frontier.normals.size());
-// }
 
 void frontier_class::getTopViewpointsInfo(const Eigen::Vector3d& cur_pos, const Eigen::Quaterniond& cur_ori, 
                                         std::vector<SubGoal>& sub_goal) {

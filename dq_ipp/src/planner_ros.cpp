@@ -7,21 +7,35 @@ using namespace Eigen;
 planner_ros_class::planner_ros_class(const ros::NodeHandle& nh,
                                     const ros::NodeHandle& nh_private)
         : planner_class(nh), nh_(nh), nh_private_(nh_private)  {
-    // get_param();
+    get_param(nh);
 
     sub_pose = nh_.subscribe("odometry", 1, &planner_ros_class::cb_pose, this);
-    // pub_target = nh_.advertise<trajectory_msgs::MultiDOFJointTrajectory>("command/trajectory", 10);
-    pub_target = nh_.advertise<geometry_msgs::PoseStamped>("command/trajectory", 10);
-    v_pub_visible_voxels = nh_.advertise<visualization_msgs::MarkerArray>("visualization/visible_voxels", 1);
+    pub_cmd_vel = nh_.advertise<geometry_msgs::TwistStamped>("/mavros/setpoint_velocity/cmd_vel", 10);
 
+    v_pub_visible_voxels = nh_.advertise<visualization_msgs::MarkerArray>("visualization/visible_voxels", 1);
     v_pub_ftrs_spatial = nh_.advertise<visualization_msgs::MarkerArray>("visualization/spatial_frontiers", 1);
     v_pub_ftrs_surface = nh_.advertise<visualization_msgs::MarkerArray>("visualization/surface_frontiers", 1);
+    v_pub_rrt_path = nh_.advertise<nav_msgs::Path>("visualization/rrt_path", 1);
 
     timer_frontier = nh_.createTimer(ros::Duration(0.5), &planner_ros_class::cb_timer_frontier, this);
+    timer_controller = nh_.createTimer(ros::Duration(0.05), &planner_ros_class::cb_timer_controller, this);
+    timer_visualization = nh_.createTimer(ros::Duration(1.0), &planner_ros_class::cb_timer_visualization, this);
 
     srv_run_planner = nh_private_.advertiseService("toggle_running", &planner_ros_class::cb_srv_run_planner, this);
 
     ROS_INFO_STREAM("\n******************** Initialized Planner ********************\n");
+}
+
+void planner_ros_class::get_param(const ros::NodeHandle& nh)    {
+    nh.param("/planner_node/p_gain", Kp, 0.5);
+    nh.param("/planner_node/p_gain_yaw", Kp_y, 0.5);
+    nh.param("/planner_node/linear_vel_bound", p_vel_bound, 1.0);
+    nh.param("/planner_node/yaw_bound", p_yaw_bound, 0.8);
+    nh.param("/planner_node/init_rot_sec", p_init_rot_time, 12.0);
+    nh.param("/planner_node/reached_pos_th", p_reached_pos_th, 0.2);
+    f_init_controller = false;
+    f_keep_i = false;
+    f_keep_c = false;
 }
 
 void planner_ros_class::cb_pose(const geometry_msgs::PoseStamped& msg) {
@@ -53,21 +67,113 @@ void planner_ros_class::cb_timer_frontier(const ros::TimerEvent& e)    {
         return;
     }
     test();
-    pub_command_point();
 }
 
-void planner_ros_class::pub_command_point() {
-    geometry_msgs::PoseStamped output;
-    output.header.frame_id = "world";
-    output.header.stamp = ros::Time::now();
-    output.pose.position.x = target_pos[0];
-    output.pose.position.y = target_pos[1];
-    output.pose.position.z = target_pos[2];
-    output.pose.orientation.x = target_ori.x();
-    output.pose.orientation.y = target_ori.y();
-    output.pose.orientation.z = target_ori.z();
-    output.pose.orientation.w = target_ori.w();
-    pub_target.publish(output);
+void planner_ros_class::cb_timer_controller(const ros::TimerEvent& e)    {
+    if (!f_init_controller && f_planning)    {
+        init_controller();
+        return;
+    }
+    else if (f_planning){
+        pid_controller();
+    }
+}
+
+void planner_ros_class::cb_timer_visualization(const ros::TimerEvent& e)    {
+    if (!f_planning)    {
+        return;
+    }
+    else{
+        if(p_verbose)   {
+            v_voxels(new_voxels);
+            v_frontiers(false); // spatial frontiers
+            v_frontiers(true);  // surface frontiers
+            v_rrt_path();
+        }
+    }
+}
+
+void planner_ros_class::init_controller()   {
+    if (!f_keep_i)    {
+        begin = ros::Time::now().toSec();
+        keep_pos = g_current_position;
+        keep_ori = g_current_orientation;
+        f_keep_i = true;
+    }
+    if (ros::Time::now().toSec() - begin > 2 * p_init_rot_time)  {
+        f_init_controller = true;
+    }
+    x_err = keep_pos[0] - g_current_position[0];
+    y_err = keep_pos[1] - g_current_position[1];
+    z_err = keep_pos[2] - g_current_position[2];
+
+    geometry_msgs::TwistStamped cmd_vel;
+    cmd_vel.header.stamp = ros::Time::now();
+    cmd_vel.twist.linear.x = bound(Kp * x_err, p_vel_bound);
+    cmd_vel.twist.linear.y = bound(Kp * y_err, p_vel_bound);
+    cmd_vel.twist.linear.z = bound(Kp * z_err, p_vel_bound);
+    cmd_vel.twist.angular.z = 360/p_init_rot_time * M_PI/180;
+    pub_cmd_vel.publish(cmd_vel);
+}
+
+void planner_ros_class::pid_controller()    {
+    if (!f_control) {
+        if (!f_keep_c)  {
+            begin = ros::Time::now().toSec();
+            keep_pos = g_current_position;
+            keep_ori = g_current_orientation;
+            f_keep_c = true;
+        }
+        // 시간 오바되면 goal 바꾸게 설정 하기!
+
+        x_err = keep_pos[0] - g_current_position[0];
+        y_err = keep_pos[1] - g_current_position[1];
+        z_err = keep_pos[2] - g_current_position[2];
+
+        geometry_msgs::TwistStamped cmd_vel;
+        cmd_vel.header.stamp = ros::Time::now();
+        cmd_vel.twist.linear.x = bound(Kp * x_err, p_vel_bound);
+        cmd_vel.twist.linear.y = bound(Kp * y_err, p_vel_bound);
+        cmd_vel.twist.linear.z = bound(Kp * z_err, p_vel_bound);
+        pub_cmd_vel.publish(cmd_vel);
+        return;
+    }
+    int cnt = 0;
+    for (iter = waypoints.begin(); iter != waypoints.end(); ++iter)  {
+        if ((g_current_position - iter->g_pos).norm() < p_reached_pos_th)    {
+            cnt += 1;
+        }
+    }
+    if (cnt > 0)    {
+        for (int i = 0; i < cnt; ++i)   {
+            waypoints.pop_front();
+        }
+    }
+    if (waypoints.size() == 0)  {
+        lock_guard<mutex> lock(m_mutex);
+        f_control = false;
+        f_keep_c = false;
+        return;
+    }
+    x_err = waypoints.front().g_pos[0] - g_current_position[0];
+    y_err = waypoints.front().g_pos[1] - g_current_position[1];
+    z_err = waypoints.front().g_pos[2] - g_current_position[2];
+    
+    double yaw_goal = waypoints.front().g_yaw;
+    tf::Matrix3x3 m_tmp_;
+    tf::matrixEigenToTF(g_current_orientation.toRotationMatrix(), m_tmp_);
+    double r_, p_, yaw_cur;
+    m_tmp_.getRPY(r_, p_, yaw_cur);   
+    yaw_err = yaw_goal - yaw_cur;
+    yawSaturation(yaw_err);
+    // std::cout << " goal: " << y1 * 180/M_PI << " curr: " << y2 * 180/M_PI << " err: " << yaw_err * 180/M_PI << std::endl;
+    geometry_msgs::TwistStamped cmd_vel;
+    cmd_vel.header.stamp = ros::Time::now();
+    cmd_vel.twist.linear.x = bound(Kp * x_err, p_vel_bound);
+    cmd_vel.twist.linear.y = bound(Kp * y_err, p_vel_bound);
+    cmd_vel.twist.linear.z = bound(Kp * z_err, p_vel_bound);
+    cmd_vel.twist.angular.z = bound(Kp_y * yaw_err, p_yaw_bound);
+    pub_cmd_vel.publish(cmd_vel);
 }
 
 void planner_ros_class::v_voxels(std::vector<Eigen::Vector3d> voxels) {
@@ -216,6 +322,7 @@ void planner_ros_class::v_frontiers(bool isSurface) {
         nv_marker.points.push_back(p);
         p.x += ftr.tangent[0]; p.y += ftr.tangent[1]; p.z += ftr.tangent[2];
         nv_marker.points.push_back(p);
+        nv_marker.pose.orientation.w = 1.0;
         // text
         vp_txt_1.text = vp_txt_2.text = std::to_string(ftr.id_);
         // color
@@ -232,4 +339,8 @@ void planner_ros_class::v_frontiers(bool isSurface) {
     }
     if (isSurface) v_pub_ftrs_surface.publish(arr_marker);
     else v_pub_ftrs_spatial.publish(arr_marker);
+}
+
+void planner_ros_class::v_rrt_path() {
+    v_pub_rrt_path.publish(rrt_result);
 }

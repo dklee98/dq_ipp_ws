@@ -41,33 +41,28 @@ protected:
     std::unique_ptr<path_generator_class> pg_;
 
     // variables
-    bool f_planning;    // flag
     Eigen::Vector3d g_current_position; // global
     Eigen::Quaterniond g_current_orientation;
-    // Eigen::Vector3d target_position;
-    // double target_yaw;
 
-    // std::vector<Eigen::Vector3d> best_vp_pos;
-    // std::vector<double> best_vp_yaw;
+    std::vector<Eigen::Vector3d> new_voxels;
     std::vector<SubGoal> best_goal;
-    Eigen::Vector3d target_pos;
-    Eigen::Quaterniond target_ori;
 
-    // params
-    // double p_checking_distance; // distance in voxelsizes where we check for known voxels
-    // bool p_accurate_frontiers;
-    double p_replan_pos_th, p_replan_yaw_th;
-    
+    nav_msgs::Path rrt_result;
+    deque<SubGoal> waypoints;
+    deque<SubGoal>::iterator iter;
+
+    // params  
     // constants
     double c_voxel_size;
 
     // flag
-    bool f_target_reached;
-    int cnt_initialized;
+    bool f_planning;
+    bool f_control;
 
     // Visualization
     virtual void v_voxels(std::vector<Eigen::Vector3d> voxels) = 0;
     virtual void v_frontiers(bool isSurface) = 0;
+    virtual void v_rrt_path() = 0;
 
 };
 

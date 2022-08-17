@@ -23,7 +23,10 @@ public:
 
     void get_param(const ros::NodeHandle& nh);
 
-    nav_msgs::Path ex_func_uav_pose(const Eigen::Vector3d& cur_pos, const Eigen::Vector3d& goal_pos);
+    nav_msgs::Path ex_func_uav_pose(const Eigen::Vector3d& cur_pos, 
+                                    const Eigen::Quaterniond& cur_ori,
+                                    const Eigen::Vector3d& goal_pos,
+                                    const Eigen::Quaterniond& goal_ori);
 
 private:
     // voxblox map object

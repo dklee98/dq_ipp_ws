@@ -8,15 +8,18 @@ path_generator_class::path_generator_class(voxblox_class& map, const ros::NodeHa
 }
 
 void path_generator_class::get_param(const ros::NodeHandle& nh)    {
-    // 'planner_node' namespace is necessary!!
-    nh.param("/max_rrt_iteration", p_max_rrt_iteration, 10000);
-    nh.param("/rrt_collision_r", p_rrt_collision_r, 0.5);
-    nh.param("/extension_range", p_extension_range, 1.0);
-    nh.param("/goal_reached_tolerance_distance", p_goal_reached_tolerance_distance, 1.0);
-    nh.getParam("/map_min", p_map_min);
-    nh.getParam("/map_max", p_map_max);
+    nh.param("/planner_node/max_rrt_iteration", p_max_rrt_iteration, 10000);
+    nh.param("/planner_node/rrt_collision_r", p_rrt_collision_r, 0.5);
+    nh.param("/planner_node/extension_range", p_extension_range, 1.0);
+    nh.param("/planner_node/goal_reached_tolerance_distance", p_goal_reached_tolerance_distance, 1.0);
+    nh.getParam("/planner_node/map_min", p_map_min);
+    nh.getParam("/planner_node/map_max", p_map_max);
 }
 
-nav_msgs::Path path_generator_class::ex_func_uav_pose(const Eigen::Vector3d& cur_pos, const Eigen::Vector3d& goal_pos)  {
-    return rrt_star_->execute(map_.esdf_server, cur_pos, goal_pos, p_goal_reached_tolerance_distance);
+nav_msgs::Path path_generator_class::ex_func_uav_pose(const Eigen::Vector3d& cur_pos, 
+                                                    const Eigen::Quaterniond& cur_ori,
+                                                    const Eigen::Vector3d& goal_pos,
+                                                    const Eigen::Quaterniond& goal_ori)  {
+    return rrt_star_->execute(map_.esdf_server, cur_pos, goal_pos, cur_ori, goal_ori, 
+                                p_goal_reached_tolerance_distance);
 }

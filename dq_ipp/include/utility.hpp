@@ -16,7 +16,10 @@
 #include <pcl/conversions.h>
 #include <pcl_conversions/pcl_conversions.h>
 
+#include <deque>
+
 #include <tf/tf.h>
+#include <tf_conversions/tf_eigen.h>
 ///// OpenCV
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
@@ -158,9 +161,9 @@ void depth_img_to_pcl(const cv::Mat &depth_img, const cv::Mat &rgb_img, const do
 
 ////// Math ///////////
 void yawSaturation(double& yaw) {
-  while (yaw < -M_PI)
+  if (yaw < -M_PI)
     yaw += 2 * M_PI;
-  while (yaw > M_PI)
+  if (yaw > M_PI)
     yaw -= 2 * M_PI;
 }
 
@@ -170,6 +173,21 @@ double angleDifference(double angle1, double angle2)  {
     angle = 2.0 * M_PI - angle;
   }
   return angle;
+}
+
+double bound(double data, double bound) {
+  if (data > 0.0)  {
+    if (data > bound)
+      return bound;
+    else
+      return data;
+  }
+  else{
+    if (data < -bound)
+      return -bound;
+    else
+      return data;
+  }
 }
 
 #endif

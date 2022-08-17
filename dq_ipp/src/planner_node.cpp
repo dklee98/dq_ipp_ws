@@ -10,7 +10,7 @@ int main(int argc, char **argv){
     planner_ros_class planner_node_(nh, nh_private);
 
     // planner_node_.planning_loop();
-    ros::AsyncSpinner spinner(4);
+    ros::AsyncSpinner spinner(6);
     spinner.start();
     ros::waitForShutdown();
 

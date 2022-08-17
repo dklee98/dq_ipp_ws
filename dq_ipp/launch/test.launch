@@ -111,8 +111,6 @@
 
         <!-- planner.cpp -->
         <param name="p_verbose" value="true" />
-        <param name="p_replan_pos_th" value="0.35" />
-        <param name="p_replan_yaw_th" value="0.35" />
         <!-- voxblox.cpp -->
         <param name="p_collision_radius" value="1.0" />
         <!-- ray_caster.cpp -->
@@ -122,9 +120,6 @@
         <param name="p_resolution_x" value="640.0" />
         <param name="p_resolution_y" value="480.0" />
         <!-- frontier.cpp -->
-        <param name="map_size_x" value="50.0" />
-        <param name="map_size_y" value="50.0" />
-        <param name="map_size_z" value="30.0" />
         <param name="p_verbose_ft" value="false" />
         <param name="p_down_sample" value="1" />
         <param name="p_spatial_cluster_min" value="50" />
@@ -136,8 +131,23 @@
         <param name="p_vp_rmin" value="3.5" />
         <param name="p_vp_rnum" value="3" />
         <param name="p_vp_dphi" value="$(eval 15 * 3.1415926 / 180.0)" />
-        <param name="p_vp_min_dist" value="0.3" />
+        <param name="p_vp_min_dist" value="0.4" />
         <param name="p_vp_clearance" value="0.41" />
+
+        <!-- rrt star -->
+        <param name="max_rrt_iteration" value="20000" />
+        <param name="rrt_collision_r" value="0.8" />
+        <param name="extention_range" value="0.7" />
+        <rosparam param="map_min"> [-20.0, -20.0, 0.0] </rosparam>
+        <rosparam param="map_max"> [10.0, 20.0, 20.0] </rosparam>
+
+
+        <param name="p_gain" value="0.8" />
+        <param name="p_gain_yaw" value="1.0" />
+        <param name="linear_vel_bound" value="1.0" />
+        <param name="yaw_bound" value="1.57" />
+        <param name="init_rot_sec" value="6.0" />
+        <param name="reached_pos_th" value="0.2" />
         
 
         <remap from="odometry" to="/mavros/local_position/pose" />

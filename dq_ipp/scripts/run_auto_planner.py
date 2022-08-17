@@ -73,48 +73,48 @@ class run_auto_planner():
 
 
     def cb_cmd_traj(self, msg):
-        self.cmd_in = True
-        self.set_pose = msg
-        self.target_pose = msg.pose
-        self.target_q = [self.target_pose.orientation.x,
-                        self.target_pose.orientation.y,
-                        self.target_pose.orientation.z,
-                        self.target_pose.orientation.w]
-        self.target_yaw = euler_from_quaternion(self.target_q)[2]
-        self.error[0] = self.target_pose.position.x - self.cur_local_pose.position.x
-        self.error[1] = self.target_pose.position.y - self.cur_local_pose.position.y
-        self.error[2] = self.target_pose.position.z - self.cur_local_pose.position.z
+        # self.cmd_in = True
+        # self.set_pose = msg
+        # self.target_pose = msg.pose
+        # self.target_q = [self.target_pose.orientation.x,
+        #                 self.target_pose.orientation.y,
+        #                 self.target_pose.orientation.z,
+        #                 self.target_pose.orientation.w]
+        # self.target_yaw = euler_from_quaternion(self.target_q)[2]
+        # self.error[0] = self.target_pose.position.x - self.cur_local_pose.position.x
+        # self.error[1] = self.target_pose.position.y - self.cur_local_pose.position.y
+        # self.error[2] = self.target_pose.position.z - self.cur_local_pose.position.z
         
-        # q = self.target_q * quaternion_inverse(self.cur_q)
-        # self.error[3] = euler_from_quaternion(q)[2]
-        self.error[3] = math.fmod(self.target_yaw - self.cur_yaw, 2*math.pi)
+        # # q = self.target_q * quaternion_inverse(self.cur_q)
+        # # self.error[3] = euler_from_quaternion(q)[2]
+        # self.error[3] = math.fmod(self.target_yaw - self.cur_yaw, 2*math.pi)
 
-        vel_cmd = TwistStamped()
-        vel_cmd.header.stamp = rospy.Time.now()
-        linear_kp = 0.5
-        linear_bound = 1.0
-        vel_cmd.twist.linear.x = self.bound(self.error[0] * linear_kp, linear_bound)
-        vel_cmd.twist.linear.y = self.bound(self.error[1] * linear_kp, linear_bound)
-        vel_cmd.twist.linear.z = self.bound(self.error[2] * linear_kp, linear_bound)
-        vel_cmd.twist.angular.z = self.bound(self.error[3] * 0.5, 0.8)
-        self.pub_vel.publish(vel_cmd)
+        # vel_cmd = TwistStamped()
+        # vel_cmd.header.stamp = rospy.Time.now()
+        # linear_kp = 0.5
+        # linear_bound = 1.0
+        # vel_cmd.twist.linear.x = self.bound(self.error[0] * linear_kp, linear_bound)
+        # vel_cmd.twist.linear.y = self.bound(self.error[1] * linear_kp, linear_bound)
+        # vel_cmd.twist.linear.z = self.bound(self.error[2] * linear_kp, linear_bound)
+        # vel_cmd.twist.angular.z = self.bound(self.error[3] * 0.5, 0.8)
+        # self.pub_vel.publish(vel_cmd)
 
         print('--------------------------')
         print('traj in ')
 
-        # visualization
-        marker = Marker()
-        marker.type = marker.ARROW
-        marker.action = marker.ADD
-        marker.header.frame_id = 'world'
-        marker.header.stamp = rospy.Time.now()
-        marker.scale.x = 0.5
-        marker.scale.y = 0.2
-        marker.scale.z = 0.2
-        marker.color.a = 1.0
-        marker.color.r = 1.0
-        marker.pose = self.target_pose
-        self.pub_target_pose.publish(marker)
+        # # visualization
+        # marker = Marker()
+        # marker.type = marker.ARROW
+        # marker.action = marker.ADD
+        # marker.header.frame_id = 'world'
+        # marker.header.stamp = rospy.Time.now()
+        # marker.scale.x = 0.5
+        # marker.scale.y = 0.2
+        # marker.scale.z = 0.2
+        # marker.color.a = 1.0
+        # marker.color.r = 1.0
+        # marker.pose = self.target_pose
+        # self.pub_target_pose.publish(marker)
         return
 
     def bound(self, data, bound):
@@ -145,12 +145,13 @@ if __name__ == '__main__':
                             runner.srv_run_planner(True)
                             print('run planner On')
                             time.sleep(1.0)
+                            sys.exit(0)
                 time.sleep(0.03)
                 continue
             
-            if not runner.cmd_in:
-                maintain_pose = runner.set_pose
-                runner.pub_pose.publish(maintain_pose)
+            # if not runner.cmd_in:
+            #     maintain_pose = runner.set_pose
+            #     runner.pub_pose.publish(maintain_pose)
 
             runner.rate.sleep()
 

@@ -130,6 +130,7 @@ private:
   double p_cluster_size_xy, p_cluster_size_yz;
   double p_vp_rmax, p_vp_rmin, p_vp_dphi, p_vp_min_dist, p_vp_clearance;
   int p_vp_rnum, p_vp_min_visible_num;
+  vector<double> p_map_min, p_map_max;
 
   // constants
   double c_voxel_size, c_voxel_size_inv;

@@ -51,7 +51,9 @@ class RRT_STAR
 public:
   RRT_STAR(int max_nodes, double collision_r, double extension_range, vector<double> boundary_min, vector<double> boundary_max);
 
-  nav_msgs::Path execute(shared_ptr<voxblox::EsdfServer> esdf_ptr, const Vector3d &goal, const Vector3d &start, const double &goal_tolerance_dist=1.0);
+  nav_msgs::Path execute(shared_ptr<voxblox::EsdfServer> esdf_ptr, const Vector3d &goal, 
+                        const Vector3d &start, const Eigen::Quaterniond& goal_ori, 
+                        const Eigen::Quaterniond& start_ori, const double &goal_tolerance_dist=1.0);
 
   bool collisionLine(shared_ptr<voxblox::EsdfServer> esdf_ptr, const Vector3d &p1, const Vector3d &p2, const double &r);
   bool collisionPoint(shared_ptr<voxblox::EsdfServer> esdf_ptr, const Vector3d &pt, const double &r);
@@ -62,7 +64,8 @@ public:
   Vector3d getNewPos(const Vector3d &sampled, const Vector3d &parent, const double &l);
   RRT_NODE *addNodeToTree(kdtree *kd_tree, RRT_NODE *parent, const Vector3d &new_pos);
   RRT_NODE *getGoal(shared_ptr<voxblox::EsdfServer> esdf_ptr, kdtree *goal_tree, RRT_NODE *new_node, const double &goal_tolerance_dist, const double &r);
-  nav_msgs::Path getBestPath(vector<RRT_NODE *> goals);
+  nav_msgs::Path getBestPath(vector<RRT_NODE *> goals, const Eigen::Vector3d& init_pos, const Eigen::Quaterniond& init_ori,
+                            const Eigen::Vector3d& end_pos, const Eigen::Quaterniond& end_ori);
 
 private:
   int max_iterations_;
@@ -82,7 +85,11 @@ RRT_STAR::RRT_STAR(int max_iteration, double collision_r, double extension_range
  max_iterations_(max_iteration), bounding_radius_(collision_r), extension_range_(extension_range), 
  boundary_min_(boundary_min), boundary_max_(boundary_max), eng(rd()), distr(0, 1) {}
 
-nav_msgs::Path RRT_STAR::execute(shared_ptr<voxblox::EsdfServer> esdf_ptr, const Vector3d &goal, const Vector3d &start, const double &goal_tolerance_dist) {
+nav_msgs::Path RRT_STAR::execute(shared_ptr<voxblox::EsdfServer> esdf_ptr, 
+                                const Vector3d &goal, const Vector3d &start,
+                                const Eigen::Quaterniond& goal_ori, 
+                                const Eigen::Quaterniond& start_ori, 
+                                const double &goal_tolerance_dist) {
   srand((unsigned int)time(NULL));
 
   int max_count_ = 0;
@@ -146,7 +153,7 @@ nav_msgs::Path RRT_STAR::execute(shared_ptr<voxblox::EsdfServer> esdf_ptr, const
     }
   }
 
-  nav_msgs::Path path_out = getBestPath(found_goals);
+  nav_msgs::Path path_out = getBestPath(found_goals, goal, goal_ori, start, start_ori);
 
   delete root;
   kd_free(kd_tree);
@@ -154,10 +161,15 @@ nav_msgs::Path RRT_STAR::execute(shared_ptr<voxblox::EsdfServer> esdf_ptr, const
 
   if (path_out.poses.size()==1){
     nav_msgs::Path empty_out;
+    // empty_out.header.stamp = ros::Time::now();
+    // empty_out.header.frame_id = "world";
     return empty_out;
   }
-  else
+  else  {
+    // path_out.header.stamp = ros::Time::now();
+    // path_out.header.frame_id = "world";
     return path_out;
+  }
 }
 
 
@@ -252,7 +264,11 @@ RRT_NODE* RRT_STAR::getGoal(shared_ptr<voxblox::EsdfServer> esdf_ptr, kdtree* go
 }
 
 
-nav_msgs::Path RRT_STAR::getBestPath(vector<RRT_NODE*> goals){
+nav_msgs::Path RRT_STAR::getBestPath(vector<RRT_NODE*> goals,
+                                    const Eigen::Vector3d& init_pos, 
+                                    const Eigen::Quaterniond& init_ori,
+                                    const Eigen::Vector3d& end_pos, 
+                                    const Eigen::Quaterniond& end_ori){
   nav_msgs::Path path;
   if (goals.size() == 0)
   {
@@ -265,15 +281,29 @@ nav_msgs::Path RRT_STAR::getBestPath(vector<RRT_NODE*> goals){
     if (best_node->cost() > goals[i]->cost())
       best_node = goals[i];
 
+  geometry_msgs::PoseStamped p;
+  // p.header.frame_id = "world";
+  // p.header.stamp = ros::Time::now();
+  p.pose.position.x = init_pos[0];
+  p.pose.position.y = init_pos[1];
+  p.pose.position.z = init_pos[2];
+  p.pose.orientation.x = init_ori.x();
+  p.pose.orientation.y = init_ori.y();
+  p.pose.orientation.z = init_ori.z();
+  p.pose.orientation.w = init_ori.w();
+  path.poses.push_back(p);
+
   RRT_NODE* n = best_node;
   if (n->parent){
     geometry_msgs::PoseStamped p;
+    // p.header.frame_id = "world";
+    // p.header.stamp = ros::Time::now();
     p.pose.position.x = n->pos[0];
     p.pose.position.y = n->pos[1];
     p.pose.position.z = n->pos[2];
-    Quaternion<double> q;
+    Quaterniond q;
     Vector3d init(1.0, 0.0, 0.0);
-    Vector3d dir(n->pos[0] - n->parent->pos[0], n->pos[1] - n->parent->pos[1], 0);
+    Vector3d dir(n->parent->pos[0] - n->pos[0], n->parent->pos[1] - n->pos[1], 0.0);
     q.setFromTwoVectors(init, dir);
     p.pose.orientation.x = q.x();
     p.pose.orientation.y = q.y();
@@ -284,13 +314,15 @@ nav_msgs::Path RRT_STAR::getBestPath(vector<RRT_NODE*> goals){
   for (int id = 0; n->parent; ++id)
   {
     geometry_msgs::PoseStamped p;
+    // p.header.frame_id = "world";
+    // p.header.stamp = ros::Time::now();
     p.pose.position.x = n->pos[0];
     p.pose.position.y = n->pos[1];
     p.pose.position.z = n->pos[2];
-    Quaternion<double> q;
+    Quaterniond q;
     Vector3d init(1.0, 0.0, 0.0);
   // Zero out rotation along x and y axis so only yaw is kept
-    Vector3d dir(n->pos[0] - n->parent->pos[0], n->pos[1] - n->parent->pos[1], 0);
+    Vector3d dir(n->parent->pos[0] - n->pos[0], n->parent->pos[1] - n->pos[1], 0.0);
     q.setFromTwoVectors(init, dir);
     p.pose.orientation.x = q.x();
     p.pose.orientation.y = q.y();
@@ -301,6 +333,15 @@ nav_msgs::Path RRT_STAR::getBestPath(vector<RRT_NODE*> goals){
 
     n = n->parent;
   }
+  
+  p.pose.position.x = end_pos[0];
+  p.pose.position.y = end_pos[1];
+  p.pose.position.z = end_pos[2];
+  p.pose.orientation.x = end_ori.x();
+  p.pose.orientation.y = end_ori.y();
+  p.pose.orientation.z = end_ori.z();
+  p.pose.orientation.w = end_ori.w();
+  path.poses.push_back(p);
 
   return path;
 }
