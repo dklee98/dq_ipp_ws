@@ -34,7 +34,6 @@ public:
 
     void cb_timer_frontier(const ros::TimerEvent& e);
     void cb_timer_controller(const ros::TimerEvent& e);
-    void cb_timer_visualization(const ros::TimerEvent& e);
 
     // controller
     void init_controller();
@@ -55,7 +54,6 @@ protected:
 
     ros::Timer timer_frontier;
     ros::Timer timer_controller;
-    ros::Timer timer_visualization;
 
 
     // Controller

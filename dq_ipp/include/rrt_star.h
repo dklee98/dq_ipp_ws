@@ -161,13 +161,11 @@ nav_msgs::Path RRT_STAR::execute(shared_ptr<voxblox::EsdfServer> esdf_ptr,
 
   if (path_out.poses.size()==1){
     nav_msgs::Path empty_out;
-    // empty_out.header.stamp = ros::Time::now();
-    // empty_out.header.frame_id = "world";
+    empty_out.header.stamp = ros::Time::now();
+    empty_out.header.frame_id = "world";
     return empty_out;
   }
   else  {
-    // path_out.header.stamp = ros::Time::now();
-    // path_out.header.frame_id = "world";
     return path_out;
   }
 }
@@ -270,6 +268,8 @@ nav_msgs::Path RRT_STAR::getBestPath(vector<RRT_NODE*> goals,
                                     const Eigen::Vector3d& end_pos, 
                                     const Eigen::Quaterniond& end_ori){
   nav_msgs::Path path;
+  path.header.stamp = ros::Time::now();
+  path.header.frame_id = "world";
   if (goals.size() == 0)
   {
     return path;
@@ -282,8 +282,8 @@ nav_msgs::Path RRT_STAR::getBestPath(vector<RRT_NODE*> goals,
       best_node = goals[i];
 
   geometry_msgs::PoseStamped p;
-  // p.header.frame_id = "world";
-  // p.header.stamp = ros::Time::now();
+  p.header.frame_id = "world";
+  p.header.stamp = ros::Time::now();
   p.pose.position.x = init_pos[0];
   p.pose.position.y = init_pos[1];
   p.pose.position.z = init_pos[2];
@@ -296,8 +296,8 @@ nav_msgs::Path RRT_STAR::getBestPath(vector<RRT_NODE*> goals,
   RRT_NODE* n = best_node;
   if (n->parent){
     geometry_msgs::PoseStamped p;
-    // p.header.frame_id = "world";
-    // p.header.stamp = ros::Time::now();
+    p.header.frame_id = "world";
+    p.header.stamp = ros::Time::now();
     p.pose.position.x = n->pos[0];
     p.pose.position.y = n->pos[1];
     p.pose.position.z = n->pos[2];
@@ -314,8 +314,8 @@ nav_msgs::Path RRT_STAR::getBestPath(vector<RRT_NODE*> goals,
   for (int id = 0; n->parent; ++id)
   {
     geometry_msgs::PoseStamped p;
-    // p.header.frame_id = "world";
-    // p.header.stamp = ros::Time::now();
+    p.header.frame_id = "world";
+    p.header.stamp = ros::Time::now();
     p.pose.position.x = n->pos[0];
     p.pose.position.y = n->pos[1];
     p.pose.position.z = n->pos[2];

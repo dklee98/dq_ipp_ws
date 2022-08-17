@@ -19,7 +19,6 @@ planner_ros_class::planner_ros_class(const ros::NodeHandle& nh,
 
     timer_frontier = nh_.createTimer(ros::Duration(0.5), &planner_ros_class::cb_timer_frontier, this);
     timer_controller = nh_.createTimer(ros::Duration(0.05), &planner_ros_class::cb_timer_controller, this);
-    timer_visualization = nh_.createTimer(ros::Duration(1.0), &planner_ros_class::cb_timer_visualization, this);
 
     srv_run_planner = nh_private_.advertiseService("toggle_running", &planner_ros_class::cb_srv_run_planner, this);
 
@@ -79,19 +78,6 @@ void planner_ros_class::cb_timer_controller(const ros::TimerEvent& e)    {
     }
 }
 
-void planner_ros_class::cb_timer_visualization(const ros::TimerEvent& e)    {
-    if (!f_planning)    {
-        return;
-    }
-    else{
-        if(p_verbose)   {
-            v_voxels(new_voxels);
-            v_frontiers(false); // spatial frontiers
-            v_frontiers(true);  // surface frontiers
-            v_rrt_path();
-        }
-    }
-}
 
 void planner_ros_class::init_controller()   {
     if (!f_keep_i)    {

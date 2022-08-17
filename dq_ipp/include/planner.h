@@ -56,8 +56,8 @@ protected:
     double c_voxel_size;
 
     // flag
-    bool f_planning;
-    bool f_control;
+    bool f_planning;    // first flag
+    bool f_control;     // controller flag
 
     // Visualization
     virtual void v_voxels(std::vector<Eigen::Vector3d> voxels) = 0;

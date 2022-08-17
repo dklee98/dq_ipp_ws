@@ -20,9 +20,7 @@ void planner_class::get_param(const ros::NodeHandle& nh)    {
 }
 
 void planner_class::test()  {
-    std::cout << " ---- " << std::endl;
     new_voxels.clear();
-    std::cout << "====== " << std::endl;
     // Raycasting : get visible voxels
     tic();
     ray_->getVisibleVoxels(&new_voxels, g_current_position, g_current_orientation);
@@ -62,5 +60,11 @@ void planner_class::test()  {
             f_control = true;
             toc();
         }    
+    }
+    if(p_verbose)   {
+        v_voxels(new_voxels);
+        v_frontiers(false); // spatial frontiers
+        v_frontiers(true);  // surface frontiers
+        v_rrt_path();
     }
 }
