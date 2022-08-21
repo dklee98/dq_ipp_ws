@@ -13,7 +13,7 @@
         <geometry>
           <mesh>
             <scale>0.2 0.2 0.2</scale>
-            <uri>model://emart/untitled.stl</uri>
+            <uri>model://emart/emart.stl</uri>
           </mesh>
         </geometry>
       </collision>
@@ -22,7 +22,7 @@
         <geometry>
           <mesh>
             <scale>0.2 0.2 0.2</scale>
-            <uri>model://emart/final.dae</uri>
+            <uri>model://emart/emart.dae</uri>
           </mesh>
         </geometry>
       </visual>

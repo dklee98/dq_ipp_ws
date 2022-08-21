@@ -19,6 +19,7 @@ planner_ros_class::planner_ros_class(const ros::NodeHandle& nh,
 
     timer_frontier = nh_.createTimer(ros::Duration(0.5), &planner_ros_class::cb_timer_frontier, this);
     timer_controller = nh_.createTimer(ros::Duration(0.05), &planner_ros_class::cb_timer_controller, this);
+    timer_fsm = nh_.createTimer(ros::Duration(0.01), &planner_ros_class::cb_timer_fsm, this);
 
     srv_run_planner = nh_private_.advertiseService("toggle_running", &planner_ros_class::cb_srv_run_planner, this);
 
@@ -74,7 +75,17 @@ void planner_ros_class::cb_timer_controller(const ros::TimerEvent& e)    {
         return;
     }
     else if (f_planning){
+        std::cout << "--" << std::endl;
         pid_controller();
+    }
+}
+
+void planner_ros_class::cb_timer_fsm(const ros::TimerEvent& e)    {
+    if (!f_planning)    {
+        return;
+    }
+    else if (f_planning){
+        // fsm();
     }
 }
 
@@ -124,17 +135,7 @@ void planner_ros_class::pid_controller()    {
         pub_cmd_vel.publish(cmd_vel);
         return;
     }
-    int cnt = 0;
-    for (iter = waypoints.begin(); iter != waypoints.end(); ++iter)  {
-        if ((g_current_position - iter->g_pos).norm() < p_reached_pos_th)    {
-            cnt += 1;
-        }
-    }
-    if (cnt > 0)    {
-        for (int i = 0; i < cnt; ++i)   {
-            waypoints.pop_front();
-        }
-    }
+    
     if (waypoints.size() == 0)  {
         lock_guard<mutex> lock(m_mutex);
         f_control = false;
@@ -152,7 +153,6 @@ void planner_ros_class::pid_controller()    {
     m_tmp_.getRPY(r_, p_, yaw_cur);   
     yaw_err = yaw_goal - yaw_cur;
     yawSaturation(yaw_err);
-    // std::cout << " goal: " << y1 * 180/M_PI << " curr: " << y2 * 180/M_PI << " err: " << yaw_err * 180/M_PI << std::endl;
     geometry_msgs::TwistStamped cmd_vel;
     cmd_vel.header.stamp = ros::Time::now();
     cmd_vel.twist.linear.x = bound(Kp * x_err, p_vel_bound);
@@ -160,6 +160,24 @@ void planner_ros_class::pid_controller()    {
     cmd_vel.twist.linear.z = bound(Kp * z_err, p_vel_bound);
     cmd_vel.twist.angular.z = bound(Kp_y * yaw_err, p_yaw_bound);
     pub_cmd_vel.publish(cmd_vel);
+
+    int cnt = 0;
+    for (iter = waypoints.begin(); iter != waypoints.end(); ++iter)  {
+        if (iter == waypoints.end() - 1)    {
+            if ((g_current_position - iter->g_pos).norm() < 0.3)    {
+                std::cout << "last node" << std::endl;
+                cnt += 1;
+            }
+        }
+        else if ((g_current_position - iter->g_pos).norm() < p_reached_pos_th)    {
+            cnt += 1;
+        }
+    }
+    if (cnt > 0)    {
+        for (int i = 0; i < cnt; ++i)   {
+            waypoints.pop_front();
+        }
+    }
 }
 
 void planner_ros_class::v_voxels(std::vector<Eigen::Vector3d> voxels) {

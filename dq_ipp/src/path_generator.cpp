@@ -23,3 +23,14 @@ nav_msgs::Path path_generator_class::ex_func_uav_pose(const Eigen::Vector3d& cur
     return rrt_star_->execute(map_.esdf_server, cur_pos, goal_pos, cur_ori, goal_ori, 
                                 p_goal_reached_tolerance_distance);
 }
+
+bool path_generator_class::checkDirectPath(const Eigen::Vector3d& cur_pos, 
+                                            const Eigen::Quaterniond& cur_ori,
+                                            const Eigen::Vector3d& goal_pos,
+                                            const Eigen::Quaterniond& goal_ori) {
+    return rrt_star_->collisionLine(map_.esdf_server, cur_pos, goal_pos, p_rrt_collision_r);
+}
+
+bool path_generator_class::checkPoint(const Eigen::Vector3d& pos) {
+    return rrt_star_->collisionPoint(map_.esdf_server, pos, p_rrt_collision_r);
+}

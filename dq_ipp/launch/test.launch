@@ -112,7 +112,7 @@
         <!-- planner.cpp -->
         <param name="p_verbose" value="true" />
         <!-- voxblox.cpp -->
-        <param name="p_collision_radius" value="1.0" />
+        <param name="p_collision_radius" value="0.1" />
         <!-- ray_caster.cpp -->
         <param name="p_downsampling_factor" value="2.0" />
         <param name="p_ray_length" value="5.0" />
@@ -136,23 +136,31 @@
 
         <!-- rrt star -->
         <param name="max_rrt_iteration" value="20000" />
-        <param name="rrt_collision_r" value="0.8" />
-        <param name="extention_range" value="0.7" />
-        <rosparam param="map_min"> [-20.0, -20.0, 0.0] </rosparam>
-        <rosparam param="map_max"> [10.0, 20.0, 20.0] </rosparam>
-
+        <param name="rrt_collision_r" value="1.0" />
+        <param name="extension_range" value="1.0" />
+        <rosparam param="map_min"> [-25.0, -15.0, 0.5] </rosparam>
+        <rosparam param="map_max"> [10.0, 15.0, 20.0] </rosparam>
+        <rosparam param="map_min2"> [-40.0, -40.0, 0.5] </rosparam>
+        <rosparam param="map_max2"> [25.0, 40.0, 50.0] </rosparam>
 
         <param name="p_gain" value="0.8" />
-        <param name="p_gain_yaw" value="1.0" />
+        <param name="p_gain_yaw" value="2.0" />
         <param name="linear_vel_bound" value="1.0" />
-        <param name="yaw_bound" value="1.57" />
+        <param name="yaw_bound" value="1.57" /> <!-- 2.355: 1.5pi -> non perfect mesh -->
         <param name="init_rot_sec" value="6.0" />
-        <param name="reached_pos_th" value="0.2" />
+        <param name="reached_pos_th" value="0.7" />
         
 
         <remap from="odometry" to="/mavros/local_position/pose" />
         <!-- <remap from="command/trajectory" to="command/trajectory" /> -->
 
+    </node>
+
+    <!-- Evaluate -->
+    <node name="evaluate" pkg="dq_ipp" type="evaluate.py" output="screen">
+        <rosparam param="map_min"> [-25.0, -33.0, 0.5] </rosparam>
+        <rosparam param="map_max"> [10.0, 33.0, 20.0] </rosparam>
+        <param name="voxel_size" value="0.2"/>
     </node>
 
     <!-- Visualization -->

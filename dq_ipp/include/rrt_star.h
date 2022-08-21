@@ -324,10 +324,14 @@ nav_msgs::Path RRT_STAR::getBestPath(vector<RRT_NODE*> goals,
   // Zero out rotation along x and y axis so only yaw is kept
     Vector3d dir(n->parent->pos[0] - n->pos[0], n->parent->pos[1] - n->pos[1], 0.0);
     q.setFromTwoVectors(init, dir);
-    p.pose.orientation.x = q.x();
-    p.pose.orientation.y = q.y();
-    p.pose.orientation.z = q.z();
-    p.pose.orientation.w = q.w();
+    // p.pose.orientation.x = q.x();
+    // p.pose.orientation.y = q.y();
+    // p.pose.orientation.z = q.z();
+    // p.pose.orientation.w = q.w();
+    p.pose.orientation.x = end_ori.x();
+    p.pose.orientation.y = end_ori.y();
+    p.pose.orientation.z = end_ori.z();
+    p.pose.orientation.w = end_ori.w();
 
     path.poses.push_back(p);
 

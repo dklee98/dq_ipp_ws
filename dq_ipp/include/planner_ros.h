@@ -34,6 +34,7 @@ public:
 
     void cb_timer_frontier(const ros::TimerEvent& e);
     void cb_timer_controller(const ros::TimerEvent& e);
+    void cb_timer_fsm(const ros::TimerEvent& e);
 
     // controller
     void init_controller();
@@ -54,6 +55,7 @@ protected:
 
     ros::Timer timer_frontier;
     ros::Timer timer_controller;
+    ros::Timer timer_fsm;
 
 
     // Controller
@@ -65,7 +67,6 @@ protected:
     double p_vel_bound, p_yaw_bound;
     double p_reached_pos_th;
     
-    double begin;
     double p_init_rot_time;
     Eigen::Vector3d keep_pos;
     Eigen::Quaterniond keep_ori;

@@ -70,8 +70,11 @@ public:
   
   void get_param(const ros::NodeHandle& nh);
 
-  void searchFrontiers(std::vector<Eigen::Vector3d> new_voxels);
-  void expandFrontier(const Eigen::Vector3i& first, Eigen::Vector3d& bbmin, Eigen::Vector3d& bbmax);
+  void searchFrontiers(std::vector<Eigen::Vector3d> new_voxels,
+                      const Eigen::Vector3d& in_pos, 
+                      const Eigen::Quaterniond& in_ori);
+  void expandFrontier(const Eigen::Vector3i& first, Eigen::Vector3d& bbmin, 
+                      Eigen::Vector3d& bbmax);
   void getSurfaceFrontier();
   void splitLargeFrontiers(list<Frontier>& ftrs, bool isSurface);
   bool splitXY(const Frontier& frontier, list<Frontier>& splits);
@@ -81,7 +84,7 @@ public:
   void downsample(const vector<Vector3d>& cluster_in, vector<Vector3d>& cluster_out);
   
   void computeFrontiersToVisit();
-  void sampleViewpoints(Frontier& frontier);
+  void sampleViewpoints(Frontier& frontier, bool isSurface);
   void getNormal(Frontier& frontier);
 
   // void getTopViewpointsInfo(const Eigen::Vector3d& cur_pos, 
@@ -89,7 +92,7 @@ public:
   //                           std::vector<Eigen::Vector3d>& points, 
   //                           std::vector<double>& yaws);
   void getTopViewpointsInfo(const Eigen::Vector3d& cur_pos, 
-                            const Eigen::Quaterniond& orientation,
+                            const Eigen::Quaterniond& cur_ori,
                             std::vector<SubGoal>& sub_goal);
 
   //////////////
@@ -103,6 +106,7 @@ public:
   bool isNeighborUnknown(const Eigen::Vector3i& voxel, int th);
   bool isNearOccupied(const Eigen::Vector3i& voxel);
   bool isNearNotFREE(const Vector3d& pos);
+  bool isNearNotOCCUPIED(const Vector3d& pos);
   bool haveOverlap(const Eigen::Vector3d& min1, const Eigen::Vector3d& max1, 
                   const Eigen::Vector3d& min2, const Eigen::Vector3d& max2);
   std::vector<Eigen::Vector3i> sixNeighbors(const Eigen::Vector3i& voxel);
@@ -122,6 +126,9 @@ private:
   voxblox_class& map_;
   ray_caster_class& ray_;
   
+  // current pose from 'SearchFrontiers'
+  Eigen::Vector3d cur_pos;
+  Eigen::Quaterniond cur_ori;
   
   // params
   bool p_verbose_ft;  // default false

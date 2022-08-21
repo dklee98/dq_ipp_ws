@@ -62,3 +62,6 @@ target_link_libraries(rgbd_node rgbd ${catkin_LIBRARIES} ${EIGEN3_LIBS} ${OpenCV
 
 add_executable(planner_node src/planner_node.cpp)
 target_link_libraries(planner_node pn_ros pn vb rc ft pg ${catkin_LIBRARIES} ${EIGEN3_LIBS} ${OpenCV_LIBS} ${OCTOMAP_LIBRARIES} kdtree)
+
+add_executable(evaluate_node src/evaluate_node.cpp)
+target_link_libraries(evaluate_node ${catkin_LIBRARIES} ${EIGEN3_LIBS} ${OpenCV_LIBS} ${OCTOMAP_LIBRARIES} )

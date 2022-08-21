@@ -40,6 +40,7 @@ class run_auto_planner():
         self.arming = rospy.ServiceProxy('/mavros/cmd/arming', CommandBool)
         self.offboarding = rospy.ServiceProxy('/mavros/set_mode', SetMode)
         self.srv_run_planner = rospy.ServiceProxy('/planner_node/toggle_running', SetBool)
+        self.srv_run_eval = rospy.ServiceProxy('/planner_node/toggle_evaluate', SetBool)
 
         self.rate = rospy.Rate(30)
 
@@ -143,7 +144,9 @@ if __name__ == '__main__':
                         if runner.cur_local_pose.position.z > 1.0:
                             runner.initialized = True
                             runner.srv_run_planner(True)
+                            runner.srv_run_eval(True)
                             print('run planner On')
+                            print('run evaluate')
                             time.sleep(1.0)
                             sys.exit(0)
                 time.sleep(0.03)

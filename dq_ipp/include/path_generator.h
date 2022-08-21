@@ -28,6 +28,13 @@ public:
                                     const Eigen::Vector3d& goal_pos,
                                     const Eigen::Quaterniond& goal_ori);
 
+    bool checkDirectPath(const Eigen::Vector3d& cur_pos, 
+                        const Eigen::Quaterniond& cur_ori,
+                        const Eigen::Vector3d& goal_pos,
+                        const Eigen::Quaterniond& goal_ori);
+
+    bool checkPoint(const Eigen::Vector3d& pos);
+
 private:
     // voxblox map object
     voxblox_class& map_;

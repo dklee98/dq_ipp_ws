@@ -44,8 +44,8 @@ protected:
     Eigen::Vector3d g_current_position; // global
     Eigen::Quaterniond g_current_orientation;
 
-    std::vector<Eigen::Vector3d> new_voxels;
     std::vector<SubGoal> best_goal;
+    int best_idx;
 
     nav_msgs::Path rrt_result;
     deque<SubGoal> waypoints;
@@ -55,9 +55,12 @@ protected:
     // constants
     double c_voxel_size;
 
+    double begin;
     // flag
     bool f_planning;    // first flag
     bool f_control;     // controller flag
+    bool f_keep_rrt;
+    bool f_isDirect;
 
     // Visualization
     virtual void v_voxels(std::vector<Eigen::Vector3d> voxels) = 0;

@@ -11,8 +11,8 @@ frontier_class::frontier_class(voxblox_class& map, ray_caster_class& ray, const 
 }
 
 void frontier_class::get_param(const ros::NodeHandle& nh)    {
-    nh.getParam("/planner_node/map_min", p_map_min);
-    nh.getParam("/planner_node/map_max", p_map_max);
+    nh.getParam("/planner_node/map_min2", p_map_min);
+    nh.getParam("/planner_node/map_max2", p_map_max);
     double x_size = p_map_max[0] - p_map_min[0];
     double y_size = p_map_max[1] - p_map_min[1];
     double z_size = p_map_max[2] - p_map_min[2];
@@ -45,12 +45,18 @@ void frontier_class::get_param(const ros::NodeHandle& nh)    {
     fill(frontier_flag.begin(), frontier_flag.end(), 0);
 }
 
-void frontier_class::searchFrontiers(std::vector<Eigen::Vector3d> new_voxels) {
+void frontier_class::searchFrontiers(std::vector<Eigen::Vector3d> new_voxels,
+                            const Eigen::Vector3d& in_pos, 
+                            const Eigen::Quaterniond& in_ori) {
     tmp_spatial_frontiers.clear();
     tmp_surface_frontiers.clear();
     Eigen::Vector3d new_bmin = new_voxels.front();
     Eigen::Vector3d new_bmax = new_voxels.front();
     getVisibleBox(new_bmin, new_bmax, new_voxels);
+
+    // get current pose
+    cur_pos = in_pos;
+    cur_ori = in_ori;
 
     // Removed changed frontiers in updated map
     auto resetFlag = [&](list<Frontier>::iterator& iter, list<Frontier>& ftrs) {
@@ -349,8 +355,8 @@ void frontier_class::computeFrontierInfo(Frontier& ftr, bool isSurface) {
         Eigen::Matrix3f cov_;   // covariance
         Eigen::Vector4f pc_mean_;   // average point
         float d_;   // distance between UAV and surface
-        Eigen::VectorXf normal_;
-        Eigen::VectorXf tangent_;
+        Eigen::Vector3f normal_;
+        Eigen::Vector3f tangent_;
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
         for (auto cell : ftr.filtered_cells_) 
             cloud->points.emplace_back(cell[0], cell[1], cell[2]);
@@ -362,7 +368,12 @@ void frontier_class::computeFrontierInfo(Frontier& ftr, bool isSurface) {
         // use the least/most singular vector as normal/tangent
         normal_ = (svd.matrixU().col(2));
         tangent_ = (svd.matrixU().col(0));
-        // normal sign check!!
+
+        double angle = normal_.dot(ftr_mean);
+        if (angle > 0)
+            normal_ *= -1;
+        
+        
         d_ = -(normal_.transpose() * ftr_mean)(0, 0);
 
         ftr.normal[0] = normal_[0];
@@ -409,7 +420,7 @@ void frontier_class::computeFrontiersToVisit() {
     // Try find viewpoints for each cluster and categorize them according to viewpoint number
     for (auto& tmp_ftr : tmp_spatial_frontiers) {
         // Search viewpoints around frontier
-        sampleViewpoints(tmp_ftr);
+        sampleViewpoints(tmp_ftr, false);
         // here calculate viewpoint's gain
         if (!tmp_ftr.viewpoints_.empty()) {
             list<Frontier>::iterator inserted = spatial_frontiers.insert(spatial_frontiers.end(), tmp_ftr);
@@ -422,7 +433,7 @@ void frontier_class::computeFrontiersToVisit() {
     }
     for (auto& tmp_ftr : tmp_surface_frontiers) {
         // Search viewpoints around frontier
-        sampleViewpoints(tmp_ftr);
+        sampleViewpoints(tmp_ftr,true);
         // here calculate viewpoint's gain
         if (!tmp_ftr.viewpoints_.empty()) {
             list<Frontier>::iterator inserted = surface_frontiers.insert(surface_frontiers.end(), tmp_ftr);
@@ -450,7 +461,7 @@ void frontier_class::computeFrontiersToVisit() {
 }
 
 // Sample viewpoints around frontier's average position, check coverage to the frontier cells
-void frontier_class::sampleViewpoints(Frontier& frontier) {
+void frontier_class::sampleViewpoints(Frontier& frontier, bool isSurface) {
     // Evaluate sample viewpoints on circles, find ones that cover most cells
     for (double rc = p_vp_rmin, dr = (p_vp_rmax - p_vp_rmin) / p_vp_rnum;
             rc <= p_vp_rmax + 1e-3; rc += dr)   {
@@ -460,10 +471,21 @@ void frontier_class::sampleViewpoints(Frontier& frontier) {
                 continue;
             // Qualified viewpoint is in bounding box and in safe region
             
-            if (!map_.isObserved(sample_pos) || 
+            if (!isSurface) {
+                if (!map_.isObserved(sample_pos) || 
+                        map_.getVoxelState(sample_pos) != voxblox_class::FREE ||
+                        isNearNotFREE(sample_pos))
+                    continue;
+            }
+            else    {
+                // if (map_.getVoxelState(sample_pos) == voxblox_class::OCCUPIED ||
+                //     !isNearNotOCCUPIED(sample_pos))
+                //     continue;   // this is inaccurate, all best vp is outside sideview of frontiers.
+                if (!map_.isObserved(sample_pos) || 
                     map_.getVoxelState(sample_pos) != voxblox_class::FREE ||
                     isNearNotFREE(sample_pos))
                 continue;
+            }
 
             // Compute average yaw
             auto& cells = frontier.filtered_cells_;
@@ -644,6 +666,18 @@ bool frontier_class::isNearNotFREE(const Eigen::Vector3d& pos) {
                 if (map_.getVoxelState(vox) != voxblox_class::FREE) return true;
             }
     return false;
+}
+
+bool frontier_class::isNearNotOCCUPIED(const Eigen::Vector3d& pos) {
+    const int vox_num = floor(p_vp_clearance / c_voxel_size);
+    for (int x = -vox_num; x <= vox_num; ++x)
+        for (int y = -vox_num; y <= vox_num; ++y)
+            for (int z = -1; z <= 1; ++z) {
+                Eigen::Vector3d vox;
+                vox << pos[0] + x * c_voxel_size, pos[1] + y * c_voxel_size, pos[2] + z * c_voxel_size;
+                if (map_.getVoxelState(vox) == voxblox_class::OCCUPIED) return false;
+            }
+    return true;
 }
 
 bool frontier_class::haveOverlap(const Eigen::Vector3d& min1, const Eigen::Vector3d& max1, 

@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- <node name="run_planner" pkg="dq_ipp" type="run_auto_planner.py" output="screen"/> -->
+
+    <!-- Evaluate -->
+    <node name="evaluate" pkg="dq_ipp" type="evaluate.py" output="screen">
+        <param name="algorithm_name" value="rrt_ipp_"/>
+        <rosparam param="map_min"> [-23.0, -19.0, -0.5] </rosparam>
+        <rosparam param="map_max"> [3.0, 17.0, 13.0] </rosparam>
+        <param name="voxel_size" value="0.2"/>
+        <param name="visualization" value="true"/>
+        <param name="verbose" value="true"/>
+    </node>
+</launch>
